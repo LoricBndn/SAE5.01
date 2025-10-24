@@ -36,6 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
+        mlModelBinding = true
     }
 }
 
@@ -58,6 +59,10 @@ dependencies {
 
     // ML Kit Face Detection
     implementation("com.google.mlkit:face-detection:16.1.7")
+
+    // TensorFlow Lite
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
