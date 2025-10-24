@@ -9,7 +9,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import com.google.mlkit.vision.face.Face
-import com.ltb.sae501.ml.EmotionResult
 import kotlin.math.max
 
 /**

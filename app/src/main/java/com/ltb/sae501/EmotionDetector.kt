@@ -1,4 +1,4 @@
-package com.ltb.sae501.ml
+package com.ltb.sae501
 
 import android.content.Context
 import android.graphics.Bitmap
