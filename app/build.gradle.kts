@@ -65,13 +65,6 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
-<<<<<<< HEAD
-    // Navigation Compose
-    implementation("androidx.navigation:navigation-compose:2.8.0")
-
-    // Icons
-    implementation("androidx.compose.material:material-icons-extended:1.6.0")
-=======
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
 
@@ -83,7 +76,6 @@ dependencies {
 
     // Add the dependencies for any other desired Firebase products
     // https://firebase.google.com/docs/android/setup#available-libraries
->>>>>>> ff0e3db (🗃️  Add Firebase config)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
