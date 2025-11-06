@@ -21,7 +21,7 @@ fun HomeScreen(onClickCamera: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E1E)), // gris foncé moderne
+            .background(Color(0xFF1E1E1E)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -31,7 +31,7 @@ fun HomeScreen(onClickCamera: () -> Unit) {
         ) {
             Text(
                 text = "Bienvenue dans SAE501",
-                color = Color(0xFFE0E0E0), // gris clair
+                color = Color(0xFFE0E0E0),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -40,7 +40,7 @@ fun HomeScreen(onClickCamera: () -> Unit) {
 
             Text(
                 text = "Découvrez vos émotions grâce à notre caméra intelligente",
-                color = Color(0xFFB0B0B0), // gris moyen
+                color = Color(0xFFB0B0B0),
                 fontSize = 16.sp,
                 lineHeight = 22.sp,
                 textAlign = TextAlign.Center,
@@ -49,7 +49,7 @@ fun HomeScreen(onClickCamera: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Icône de caméra avec Material Icon
+            // Icône
             Image(
                 painter = painterResource(id = R.drawable.ic_camera),
                 contentDescription = "Caméra",
@@ -60,14 +60,14 @@ fun HomeScreen(onClickCamera: () -> Unit) {
 
             Button(
                 onClick = onClickCamera,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)), // orange
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .height(56.dp)
                     .width(220.dp)
             ) {
                 Text(
-                    text = "Ouvrir la caméra",
+                    text = "Démarrer",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

@@ -8,13 +8,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.ltb.sae501.ui.components.BottomNavBar
+import com.ltb.sae501.ui.navigation.Screen
+import com.ltb.sae501.ui.screens.CameraScreen
+import com.ltb.sae501.ui.screens.HistoryScreen
 import com.ltb.sae501.ui.screens.HomeScreen
+import com.ltb.sae501.ui.screens.SettingsScreen
 import com.ltb.sae501.ui.theme.SAE501Theme
 import java.util.concurrent.Executors
 
@@ -44,20 +49,30 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SAE501Theme {
-                var afficherCamera by remember { mutableStateOf(false) }
+                var currentScreen by remember { mutableStateOf(Screen.Home.route) }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        BottomNavBar(
+                            currentScreen = currentScreen,
+                            onNavigate = { route -> currentScreen = route }
+                        )
+                    }
+                ) { paddingValues ->
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
                     ) {
-                        if (afficherCamera) {
-                            EcranCamera(
+                        when (currentScreen) {
+                            Screen.Home.route -> HomeScreen { currentScreen = Screen.Camera.route }
+                            Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
                                 executeurEmotion = executeurEmotion
                             )
-                        } else {
-                            HomeScreen { afficherCamera = true }
+                            Screen.History.route -> HistoryScreen()
+                            Screen.Settings.route -> SettingsScreen()
                         }
                     }
                 }
