@@ -22,6 +22,7 @@ import com.ltb.sae501.ui.screens.HomeScreen
 import com.ltb.sae501.ui.screens.SettingsScreen
 import com.ltb.sae501.ui.theme.SAE501Theme
 import java.util.concurrent.Executors
+import com.ltb.sae501.firebase.FirebaseDataSource
 
 class MainActivity : ComponentActivity() {
 
@@ -29,6 +30,9 @@ class MainActivity : ComponentActivity() {
     private val executeurCamera = Executors.newSingleThreadExecutor()
     private val executeurEmotion = Executors.newSingleThreadExecutor()
     private lateinit var detecteurEmotion: EmotionDetector
+
+    // ⬅️ AJOUT DE L'INSTANCE DE LA SOURCE DE DONNÉES FIREBASE
+    private val firebaseDataSource = FirebaseDataSource()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,12 +70,15 @@ class MainActivity : ComponentActivity() {
                             .padding(paddingValues)
                     ) {
                         when (currentScreen) {
-                            Screen.Home.route -> HomeScreen { currentScreen = Screen.Camera.route }
+                            Screen.Home.route -> HomeScreen(
+                                onClickCamera = { currentScreen = Screen.Camera.route },
+                            )
                             Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
-                                executeurEmotion = executeurEmotion
+                                executeurEmotion = executeurEmotion,
+                                dataSource = firebaseDataSource
                             )
-                            Screen.History.route -> HistoryScreen()
+                            Screen.History.route -> HistoryScreen(dataSource = firebaseDataSource)
                             Screen.Settings.route -> SettingsScreen()
                         }
                     }

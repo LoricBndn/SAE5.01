@@ -1,6 +1,7 @@
 package com.ltb.sae501
 
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -12,8 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,10 +23,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.ltb.sae501.data.models.RecognizedEmotion
+import com.ltb.sae501.firebase.FirebaseDataSource
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -37,16 +40,18 @@ import java.util.concurrent.Executors
 @Composable
 fun EcranCamera(
     detecteurEmotion: EmotionDetector,
-    executeurEmotion: java.util.concurrent.ExecutorService
+    executeurEmotion: java.util.concurrent.ExecutorService,
+    dataSource: FirebaseDataSource
 ) {
 
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
 
     var visages by remember { mutableStateOf(listOf<Face>()) }
     var emotions by remember { mutableStateOf(mapOf<Int, EmotionResult>()) }
-    var largeurImage by remember { mutableStateOf(0) }
-    var hauteurImage by remember { mutableStateOf(0) }
+    var largeurImage by remember { mutableIntStateOf(0) }
+    var hauteurImage by remember { mutableIntStateOf(0) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isFrontCamera by remember { mutableStateOf(true) }
 
@@ -54,6 +59,7 @@ fun EcranCamera(
 
     val previewView = remember { PreviewView(context) }
 
+    // Configuration de CameraX (Lancée quand isFrontCamera change)
     LaunchedEffect(isFrontCamera) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
@@ -62,7 +68,7 @@ fun EcranCamera(
 
             // Prévisualisation
             val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
+                it.surfaceProvider = previewView.surfaceProvider
             }
 
             val imgCapture = ImageCapture.Builder()
@@ -84,7 +90,7 @@ fun EcranCamera(
                 val mediaImage = imageProxy.image
                 if (mediaImage != null) {
                     val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                    val bitmap = imageProxy.versBitmap()
+                    val bitmap = imageProxy.versBitmap() // ⬅️ NÉCESSITE L'EXTENSION versBitmap()
 
                     detecteurVisages.process(inputImage)
                         .addOnSuccessListener { visagesDetectes ->
@@ -169,6 +175,7 @@ fun EcranCamera(
             modifier = Modifier.fillMaxSize()
         )
 
+        // Overlay pour afficher les boîtes englobantes et les résultats d'émotion
         FaceOverlay(
             faces = visages,
             emotions = emotions,
@@ -192,7 +199,6 @@ fun EcranCamera(
                 // Bouton pour changer de caméra
                 IconButton(
                     onClick = {
-                        // On change juste l'état. LaunchedEffect s'occupe du reste.
                         isFrontCamera = !isFrontCamera
                     },
                     modifier = Modifier
@@ -206,7 +212,6 @@ fun EcranCamera(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-
 
                 IconButton(
                     onClick = {
@@ -225,13 +230,47 @@ fun EcranCamera(
                                     override fun onError(exc: ImageCaptureException) {
                                         println("Erreur capture photo: ${exc.message}")
                                         exc.printStackTrace()
+                                        // TODO: Afficher un Toast d'erreur
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                        println("✅ Photo sauvegardée: ${photoFile.absolutePath}")
+                                        println("✅ Photo sauvegardée temporairement: ${photoFile.absolutePath}")
+
+                                        // 1. Obtention de l'URI et conversion des résultats d'analyse
+                                        val uri = output.savedUri ?: Uri.fromFile(photoFile)
+
+                                        // Conversion de Map<Int, EmotionResult> en List<RecognizedEmotion>
+                                        val emotionsToSave = emotions.values.map { emotionResult ->
+                                            RecognizedEmotion(
+                                                emotion = emotionResult.emotion,
+                                                confidence = emotionResult.confidence
+                                            )
+                                        }.toList()
+
+                                        // 2. Lancement de l'opération asynchrone (upload + écriture RTDB)
+                                        if (emotionsToSave.isNotEmpty()) {
+                                            coroutineScope.launch {
+                                                val success = dataSource.saveRecognition(
+                                                    imageUri = uri,
+                                                    recognizedEmotions = emotionsToSave
+                                                )
+                                                if (success) {
+                                                    println("🎉 Historique de reconnaissance sauvegardé dans Firebase!")
+                                                    // TODO: Afficher un Toast "Sauvegarde réussie !"
+                                                } else {
+                                                    println("❌ Échec de la sauvegarde Firebase.")
+                                                    // TODO: Afficher un Toast "Échec de la sauvegarde."
+                                                }
+                                            }
+                                        } else {
+                                            println("🤷‍♂️ Aucune émotion détectée à sauvegarder.")
+                                        }
                                     }
                                 }
                             )
+                        } ?: run {
+                            // ⬅️ Débogage si le bouton est cliqué mais imageCapture est null
+                            println("ATTENTION: Le bouton a été cliqué mais imageCapture est null. Le LaunchedEffect a échoué.")
                         }
                     },
                     modifier = Modifier

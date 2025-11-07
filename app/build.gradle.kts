@@ -52,6 +52,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+
     // CameraX
     implementation("androidx.camera:camera-core:1.4.0")
     implementation("androidx.camera:camera-camera2:1.4.0")
@@ -65,13 +67,24 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+    // Coil (Librairie pour le chargement asynchrone d'images)
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
 
     // TODO: Add the dependencies for Firebase products you want to use
     // When using the BoM, don't specify versions in Firebase dependencies
     implementation("com.google.firebase:firebase-analytics")
+
+    // Firebase Realtime Database (pour les métadonnées)
+    implementation("com.google.firebase:firebase-database")
+
+    // Firebase Storage (pour sauvegarder l'image)
+    implementation("com.google.firebase:firebase-storage")
+
+    // Coroutines pour les opérations asynchrones
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
 
     // Add the dependencies for any other desired Firebase products
