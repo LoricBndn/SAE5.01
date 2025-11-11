@@ -39,7 +39,7 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
     var isLoading by remember { mutableStateOf(true) }
     var showAddImageDialog by remember { mutableStateOf(false) }
 
-    // Charger les catégories au démarrage
+    // Charger les catégories
     LaunchedEffect(Unit) {
         dataSource.getCategories().collect { loadedCategories ->
             categories = loadedCategories
@@ -99,7 +99,7 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
         }
     }
 
-    // Dialog pour ajouter une image
+    // Popup pour ajouter une image
     if (showAddImageDialog && selectedCategory != null) {
         AddImageDialog(
             category = selectedCategory!!,
