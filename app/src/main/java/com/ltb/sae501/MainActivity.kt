@@ -16,10 +16,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.ltb.sae501.ui.components.BottomNavBar
 import com.ltb.sae501.ui.navigation.Screen
-import com.ltb.sae501.ui.screens.CameraScreen
-import com.ltb.sae501.ui.screens.HistoryScreen
-import com.ltb.sae501.ui.screens.HomeScreen
-import com.ltb.sae501.ui.screens.SettingsScreen
+import com.ltb.sae501.ui.screens.*
 import com.ltb.sae501.ui.theme.SAE501Theme
 import java.util.concurrent.Executors
 import com.ltb.sae501.firebase.FirebaseDataSource
@@ -31,7 +28,6 @@ class MainActivity : ComponentActivity() {
     private val executeurEmotion = Executors.newSingleThreadExecutor()
     private lateinit var detecteurEmotion: EmotionDetector
 
-    // ⬅️ AJOUT DE L'INSTANCE DE LA SOURCE DE DONNÉES FIREBASE
     private val firebaseDataSource = FirebaseDataSource()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,15 +67,25 @@ class MainActivity : ComponentActivity() {
                     ) {
                         when (currentScreen) {
                             Screen.Home.route -> HomeScreen(
-                                onClickCamera = { currentScreen = Screen.Camera.route },
+                                onClickCamera = { currentScreen = Screen.Camera.route }
                             )
                             Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
                                 executeurEmotion = executeurEmotion,
                                 dataSource = firebaseDataSource
                             )
-                            Screen.History.route -> HistoryScreen(dataSource = firebaseDataSource)
-                            Screen.Settings.route -> SettingsScreen()
+                            Screen.History.route -> HistoryScreen(
+                                dataSource = firebaseDataSource
+                            )
+                            Screen.Settings.route -> SettingsScreen(
+                                dataSource = firebaseDataSource,
+                                onNavigateToCategoryManagement = {
+                                    currentScreen = "category_management"
+                                }
+                            )
+                            "category_management" -> CategoryManagementScreen(
+                                dataSource = firebaseDataSource
+                            )
                         }
                     }
                 }
