@@ -20,6 +20,7 @@ import com.ltb.sae501.ui.screens.*
 import com.ltb.sae501.ui.theme.SAE501Theme
 import java.util.concurrent.Executors
 import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.ui.screens.CategoryManagementScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -36,7 +37,6 @@ class MainActivity : ComponentActivity() {
 
         detecteurEmotion = EmotionDetector(this)
 
-        // Vérifier les permissions caméra
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -48,7 +48,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            SAE501Theme {
+            var isDarkTheme by remember { mutableStateOf(false) }
+
+            SAE501Theme(darkTheme = isDarkTheme) {
                 var currentScreen by remember { mutableStateOf(Screen.Home.route) }
 
                 Scaffold(
@@ -67,7 +69,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         when (currentScreen) {
                             Screen.Home.route -> HomeScreen(
-                                onClickCamera = { currentScreen = Screen.Camera.route }
+                                onClickDetection = { currentScreen = Screen.Camera.route }
                             )
                             Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
@@ -81,7 +83,9 @@ class MainActivity : ComponentActivity() {
                                 dataSource = firebaseDataSource,
                                 onNavigateToCategoryManagement = {
                                     currentScreen = "category_management"
-                                }
+                                },
+                                isDarkModeEnabled = isDarkTheme,
+                                onSetDarkMode = { isDarkTheme = it }
                             )
                             "category_management" -> CategoryManagementScreen(
                                 dataSource = firebaseDataSource

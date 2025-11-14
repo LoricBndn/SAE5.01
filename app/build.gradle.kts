@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.compose.material:material-icons-extended")
 
     // CameraX
     implementation("androidx.camera:camera-core:1.4.0")

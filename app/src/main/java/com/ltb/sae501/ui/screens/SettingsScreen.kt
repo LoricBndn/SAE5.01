@@ -1,168 +1,150 @@
 package com.ltb.sae501.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Percent
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.ui.theme.AccentPink
+import com.ltb.sae501.ui.theme.AccentDelete
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    dataSource: FirebaseDataSource,
-    onNavigateToCategoryManagement: () -> Unit
+    isDarkModeEnabled: Boolean,
+    onSetDarkMode: (Boolean) -> Unit,
+    dataSource: FirebaseDataSource = FirebaseDataSource(),
+    onNavigateToCategoryManagement: () -> Unit = {}
 ) {
+    var isPercentageShown by remember { mutableStateOf(true) }
+    var isAutoSaveEnabled by remember { mutableStateOf(true) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    var showInitDialog by remember { mutableStateOf(false) }
-    var isInitializing by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Paramètres") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF2A2A2A),
-                    titleContentColor = Color.White
-                )
-            )
-        }
-    ) { paddingValues ->
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .systemBarsPadding(),
+    ) {
+        Text(
+            text = "Paramètres",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF1E1E1E))
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Section Dataset
-            Text(
-                text = "Dataset FER-2013",
-                color = Color(0xFFB0B0B0),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
+            SettingsSwitchItem(
+                title = "Thème sombre",
+                subtitle = "Mode nuit",
+                icon = Icons.Outlined.DarkMode,
+                iconTint = MaterialTheme.colorScheme.primary,
+                checked = isDarkModeEnabled,
+                onCheckedChange = onSetDarkMode
             )
 
-            // Gestion des catégories
-            SettingsItem(
-                title = "Gestion des émotions",
-                subtitle = "Gérer les images d'entraînement par émotion",
-                icon = "🎭",
-                onClick = onNavigateToCategoryManagement
+
+            SettingsSwitchItem(
+                title = "Afficher le pourcentage",
+                subtitle = "Précision affichée",
+                icon = Icons.Filled.Percent,
+                iconTint = MaterialTheme.colorScheme.primary,
+                checked = isPercentageShown,
+                onCheckedChange = { isPercentageShown = it }
             )
 
-            // Initialiser les catégories
-            SettingsItem(
-                title = "Initialiser les catégories",
-                subtitle = "Créer les 7 catégories d'émotions FER-2013",
-                icon = "🔄",
-                onClick = { showInitDialog = true }
+            SettingsSwitchItem(
+                title = "Sauvegarde automatique",
+                subtitle = "Enregistrement auto",
+                icon = Icons.Outlined.PhotoCamera,
+                iconTint = MaterialTheme.colorScheme.primary,
+                checked = isAutoSaveEnabled,
+                onCheckedChange = { isAutoSaveEnabled = it }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Section Application
-            Text(
-                text = "Application",
-                color = Color(0xFFB0B0B0),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+            SettingsActionItem(
+                title = "Modifier l'IA",
+                subtitle = "Images d'entraînement",
+                icon = Icons.Outlined.Assessment,
+                iconTint = AccentPink,
+                buttonText = "Gérer",
+                buttonColor = AccentPink,
+                onClick = onNavigateToCategoryManagement
             )
 
-            // À propos
-            SettingsItem(
-                title = "À propos",
-                subtitle = "Version 1.0.0 - SAE 5.01",
-                icon = "ℹ️",
-                onClick = { /* TODO */ }
+            SettingsDangerItem(
+                title = "Supprimer les données",
+                subtitle = "Réinitialiser l'app",
+                icon = Icons.Filled.Delete,
+                iconTint = AccentDelete,
+                buttonText = "Supprimer",
+                onClick = { showDeleteDialog = true }
             )
         }
     }
 
-    // Dialog de confirmation pour l'initialisation
-    if (showInitDialog) {
+    if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { if (!isInitializing) showInitDialog = false },
-            title = { Text("Initialiser les catégories") },
-            text = {
-                Column {
-                    Text("Cette action va créer les 7 catégories d'émotions du dataset FER-2013 :")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("• 😠 Colère\n• 🤢 Dégoût\n• 😨 Peur\n• 😄 Joie\n• 😢 Tristesse\n• 😲 Surprise\n• 😐 Neutre")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Les catégories existantes ne seront pas modifiées.",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-
-                    if (isInitializing) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFFF18E06)
-                        )
-                    }
-                }
-            },
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer toutes les données?") },
+            text = { Text("Ceci inclut votre historique et vos configurations. Cette action est irréversible.") },
             confirmButton = {
                 Button(
                     onClick = {
-                        isInitializing = true
                         coroutineScope.launch {
-                            val success = dataSource.initializeDefaultCategories()
-                            isInitializing = false
-                            showInitDialog = false
-                            // TODO: Afficher un message de succès/échec
+                            // Logique de suppression ici
+                            showDeleteDialog = false
                         }
                     },
-                    enabled = !isInitializing,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF18E06)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentDelete)
                 ) {
-                    Text("Initialiser")
+                    Text("Confirmer la suppression")
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showInitDialog = false },
-                    enabled = !isInitializing
-                ) {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Annuler")
                 }
             }
         )
     }
 }
-
 @Composable
-fun SettingsItem(
+fun SettingsSwitchItem(
     title: String,
     subtitle: String,
-    icon: String,
-    onClick: () -> Unit
+    icon: ImageVector,
+    iconTint: Color,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
-        ),
-        shape = RoundedCornerShape(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
@@ -171,35 +153,131 @@ fun SettingsItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = icon,
-                    fontSize = 32.sp
+            SettingsIconAndText(title, subtitle, icon, iconTint)
+
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    checkedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFE0E0E0),
+                    uncheckedThumbColor = Color.White
                 )
+            )
+        }
+    }
+}
 
-                Column {
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = subtitle,
-                        color = Color(0xFFB0B0B0),
-                        fontSize = 12.sp
-                    )
-                }
+@Composable
+fun SettingsActionItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconTint: Color,
+    buttonText: String,
+    buttonColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), // Blanc
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SettingsIconAndText(title, subtitle, icon, iconTint, modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(buttonText, color = Color.White)
             }
+        }
+    }
+}
 
+@Composable
+fun SettingsDangerItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconTint: Color,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), // Blanc
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SettingsIconAndText(title, subtitle, icon, iconTint, modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(containerColor = AccentDelete), // Couleur Rouge
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(buttonText, color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsIconAndText(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconTint: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(Color(0xFFF0F0F0), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = "Ouvrir",
-                tint = Color(0xFFB0B0B0)
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Column {
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp
             )
         }
     }
