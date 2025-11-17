@@ -38,6 +38,8 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
     var selectedCategory by remember { mutableStateOf<EmotionCategory?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var showAddImageDialog by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadError by remember { mutableStateOf<String?>(null) }
 
     // Charger les catégories
     LaunchedEffect(Unit) {
@@ -103,15 +105,26 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
     if (showAddImageDialog && selectedCategory != null) {
         AddImageDialog(
             category = selectedCategory!!,
-            onDismiss = { showAddImageDialog = false },
+            isUploading = isUploading,
+            uploadError = uploadError,
+            onDismiss = {
+                showAddImageDialog = false
+                isUploading = false
+                uploadError = null
+            },
             onImageSelected = { uri ->
                 coroutineScope.launch {
+                    isUploading = true
+                    uploadError = null
                     val success = dataSource.uploadTrainingImage(
                         categoryId = selectedCategory!!.id,
                         imageUri = uri
                     )
+                    isUploading = false
                     if (success) {
                         showAddImageDialog = false
+                    } else {
+                        uploadError = "Échec de l'upload. Vérifiez votre connexion internet."
                     }
                 }
             }
@@ -287,16 +300,15 @@ fun CategoryCard(
 @Composable
 fun AddImageDialog(
     category: EmotionCategory,
+    isUploading: Boolean,
+    uploadError: String?,
     onDismiss: () -> Unit,
     onImageSelected: (Uri) -> Unit
 ) {
-    var isUploading by remember { mutableStateOf(false) }
-
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            isUploading = true
             onImageSelected(uri)
         }
     }
@@ -333,6 +345,16 @@ fun AddImageDialog(
                         text = "Upload en cours...",
                         fontSize = 12.sp,
                         color = Color(0xFFF18E06)
+                    )
+                }
+
+                if (uploadError != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = uploadError,
+                        fontSize = 12.sp,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

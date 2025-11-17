@@ -66,7 +66,7 @@ class EmotionDetector(private val context: Context) {
             labels = context.assets.open("labels.txt")
                 .bufferedReader()
                 .readLines()
-            println("✅ ${labels.size} émotions chargées: $labels")
+            println("${labels.size} émotions chargées: $labels")
         } catch (e: Exception) {
             println("Erreur chargement labels: ${e.message}")
         }
