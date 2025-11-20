@@ -14,15 +14,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.ltb.sae501.data.models.RecognitionResult
-import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.network.RemoteDataSource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(dataSource: FirebaseDataSource) {
-    // 1. Récupération des données en temps réel (collectAsState)
+fun HistoryScreen(dataSource: RemoteDataSource) {
     val history by dataSource.getHistory().collectAsState(initial = emptyList())
 
     Scaffold(
@@ -40,13 +39,12 @@ fun HistoryScreen(dataSource: FirebaseDataSource) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "📋 Aucun historique de reconnaissance trouvé.",
+                    text = "Aucun historique",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
         } else {
-            // 2. Affichage de la liste
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -69,20 +67,18 @@ fun HistoryItemCard(result: RecognitionResult) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
-            // 3. Affichage de l'image depuis l'URL Firebase Storage
             AsyncImage(
                 model = result.imageStorageUrl,
                 contentDescription = "Image reconnue",
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(MaterialTheme.shapes.small) // ⬅️ 'clip' fonctionne maintenant
+                    .clip(MaterialTheme.shapes.small)
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
 
-                // Date et Heure
                 val formattedDate = SimpleDateFormat("dd MMM yyyy à HH:mm", Locale.getDefault()).format(
                     Date(result.timestamp)
                 )
@@ -94,7 +90,6 @@ fun HistoryItemCard(result: RecognitionResult) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Émotions Reconnues
                 Text(
                     text = "Émotions :",
                     style = MaterialTheme.typography.titleMedium,
@@ -103,7 +98,6 @@ fun HistoryItemCard(result: RecognitionResult) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Liste des 3 principales émotions
                 result.recognizedEmotions.take(3).forEach { emotion ->
                     Text(
                         text = "• ${emotion.emotion} (${"%.0f".format(emotion.confidence * 100)}%)",

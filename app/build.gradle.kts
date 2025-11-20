@@ -1,8 +1,10 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.gms.google-services")
 }
 
 android {
@@ -17,6 +19,21 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // API Base URL Configuration
+        // Default: Emulator (10.0.2.2 = host machine's localhost)
+        // To override for physical device: Add to local.properties:
+        //   api.base.url=http://YOUR_COMPUTER_IP:8080/api/
+        // Example: api.base.url=http://192.168.1.100:8080/api/
+        val localPropertiesFile = File(rootProject.projectDir, "local.properties")
+        val apiBaseUrl = if (localPropertiesFile.exists()) {
+            val properties = Properties()
+            properties.load(FileInputStream(localPropertiesFile))
+            properties.getProperty("api.base.url", "http://10.0.2.2:8080/api/")
+        } else {
+            "http://10.0.2.2:8080/api/"
+        }
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
@@ -38,6 +55,7 @@ android {
     buildFeatures {
         compose = true
         mlModelBinding = true
+        buildConfig = true
     }
 }
 
@@ -71,25 +89,14 @@ dependencies {
     // Coil (Librairie pour le chargement asynchrone d'images)
     implementation("io.coil-kt:coil-compose:2.5.0")
 
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
-
-    // TODO: Add the dependencies for Firebase products you want to use
-    // When using the BoM, don't specify versions in Firebase dependencies
-    implementation("com.google.firebase:firebase-analytics")
-
-    // Firebase Realtime Database (pour les métadonnées)
-    implementation("com.google.firebase:firebase-database")
-
-    // Firebase Storage (pour sauvegarder l'image)
-    implementation("com.google.firebase:firebase-storage")
+    // Retrofit pour les appels REST API
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Coroutines pour les opérations asynchrones
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
-
-
-    // Add the dependencies for any other desired Firebase products
-    // https://firebase.google.com/docs/android/setup#available-libraries
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

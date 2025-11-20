@@ -1,0 +1,26 @@
+## This file is an example configuration for local.properties
+# Copy this file to "local.properties" and configure as needed
+#
+# Location of the Android SDK (auto-configured by Android Studio)
+sdk.dir=/path/to/Android/Sdk
+
+# API Base URL Configuration
+# ------------------------------
+# Configure the backend API URL based on your environment:
+#
+# For Android Emulator:
+#   Use 10.0.2.2 to access the host machine's localhost
+#   api.base.url=http://10.0.2.2:8080/api/
+#
+# For Physical Device (same WiFi network):
+#   1. Find your computer's local IP address:
+#      - Windows: Open CMD and run "ipconfig" → Look for "IPv4 Address"
+#      - Mac/Linux: Open Terminal and run "ifconfig" or "ip addr" → Look for inet address
+#   2. Replace the IP below with your computer's IP
+#   api.base.url=http://192.168.1.100:8080/api/
+#
+# For Production:
+#   api.base.url=https://your-production-api.com/api/
+
+# Uncomment and configure the line below for physical device testing:
+# api.base.url=http://192.168.1.100:8080/api/

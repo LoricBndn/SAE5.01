@@ -29,7 +29,7 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.ltb.sae501.data.models.RecognizedEmotion
-import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.network.RemoteDataSource
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -41,7 +41,7 @@ import java.util.concurrent.Executors
 fun EcranCamera(
     detecteurEmotion: EmotionDetector,
     executeurEmotion: java.util.concurrent.ExecutorService,
-    dataSource: FirebaseDataSource
+    dataSource: RemoteDataSource
 ) {
 
     val context = LocalContext.current
@@ -57,31 +57,25 @@ fun EcranCamera(
 
     var enCoursAnalyse by remember { mutableStateOf(false) }
 
-    // analyse toutes les 3 frames
     var frameCounter by remember { mutableIntStateOf(0) }
     val analyseFrequency = 3
-
-    // garde les 5 dernières détections
     val emotionHistorySize = 5
     val emotionHistory = remember { mutableStateMapOf<Int, MutableList<EmotionResult>>() }
 
     val previewView = remember { PreviewView(context) }
 
-    // Réinitialiser l'historique lors du changement de caméra
     LaunchedEffect(isFrontCamera) {
         frameCounter = 0
         emotionHistory.clear()
         emotions = emptyMap()
     }
 
-    // Configuration de CameraX (Lancée quand isFrontCamera change)
     LaunchedEffect(isFrontCamera) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
 
-            // Prévisualisation
             val preview = Preview.Builder().build().also {
                 it.surfaceProvider = previewView.surfaceProvider
             }
@@ -113,7 +107,6 @@ fun EcranCamera(
                             largeurImage = inputImage.width
                             hauteurImage = inputImage.height
 
-                            // Analyser seulement toutes les 3 frames
                             frameCounter++
                             val shouldAnalyze = frameCounter % analyseFrequency == 0
 
@@ -130,16 +123,13 @@ fun EcranCamera(
                                                 if (bitmapVisage != null) {
                                                     val emotion = detecteurEmotion.detecterEmotion(bitmapVisage)
                                                     if (emotion != null) {
-                                                        // Log de la détection brute
                                                         println("[Visage $index] Émotion détectée: ${emotion.emotion} - Confiance: ${String.format("%.1f", emotion.confidence * 100)}%")
 
-                                                        // Ajouter à l'historique
                                                         if (!emotionHistory.containsKey(index)) {
                                                             emotionHistory[index] = mutableListOf()
                                                         }
                                                         emotionHistory[index]?.add(emotion)
 
-                                                        // Limiter la taille de l'historique
                                                         if (emotionHistory[index]!!.size > emotionHistorySize) {
                                                             emotionHistory[index]!!.removeAt(0)
                                                         }
@@ -151,12 +141,10 @@ fun EcranCamera(
                                             }
                                         }
 
-                                        // Calculer les émotions lissées
                                         val emotionsLissees = calculerEmotionsLissees(emotionHistory)
 
-                                        // Log des émotions lissées finales
                                         emotionsLissees.forEach { (index, emotion) ->
-                                            println("[Visage $index] Émotion LISSÉE: ${emotion.emotion} - Confiance moyenne: ${String.format("%.1f", emotion.confidence * 100)}%")
+                                            println("[Visage $index] Lissée: ${emotion.emotion} - ${String.format("%.1f", emotion.confidence * 100)}%")
                                         }
 
                                         emotions = emotionsLissees
@@ -225,7 +213,6 @@ fun EcranCamera(
             isFrontCamera = isFrontCamera
         )
 
-        // Contrôles en bas de l'écran
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -237,7 +224,6 @@ fun EcranCamera(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Bouton pour changer de caméra
                 IconButton(
                     onClick = {
                         isFrontCamera = !isFrontCamera
@@ -275,12 +261,10 @@ fun EcranCamera(
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                        println("Photo sauvegardée temporairement: ${photoFile.absolutePath}")
+                                        println("Photo sauvegardée: ${photoFile.absolutePath}")
 
-                                        // 1. Obtention de l'URI et conversion des résultats d'analyse
                                         val uri = output.savedUri ?: Uri.fromFile(photoFile)
 
-                                        // Conversion de Map<Int, EmotionResult> en List<RecognizedEmotion>
                                         val emotionsToSave = emotions.values.map { emotionResult ->
                                             RecognizedEmotion(
                                                 emotion = emotionResult.emotion,
@@ -288,7 +272,6 @@ fun EcranCamera(
                                             )
                                         }.toList()
 
-                                        // 2. Lancement de l'opération asynchrone (upload + écriture RTDB)
                                         if (emotionsToSave.isNotEmpty()) {
                                             coroutineScope.launch {
                                                 val success = dataSource.saveRecognition(
@@ -296,22 +279,21 @@ fun EcranCamera(
                                                     recognizedEmotions = emotionsToSave
                                                 )
                                                 if (success) {
-                                                    println("🎉 Historique de reconnaissance sauvegardé dans Firebase!")
-                                                    // TODO: Afficher un Toast "Sauvegarde réussie !"
+                                                    println("Sauvegardé!")
+                                                    // TODO: Toast succès
                                                 } else {
-                                                    println("❌ Échec de la sauvegarde Firebase.")
-                                                    // TODO: Afficher un Toast "Échec de la sauvegarde."
+                                                    println("Échec sauvegarde")
+                                                    // TODO: Toast erreur
                                                 }
                                             }
                                         } else {
-                                            println("🤷‍♂️ Aucune émotion détectée à sauvegarder.")
+                                            println("Aucune émotion à sauvegarder")
                                         }
                                     }
                                 }
                             )
                         } ?: run {
-                            // ⬅️ Débogage si le bouton est cliqué mais imageCapture est null
-                            println("ATTENTION: Le bouton a été cliqué mais imageCapture est null. Le LaunchedEffect a échoué.")
+                            println("imageCapture est null")
                         }
                     },
                     modifier = Modifier
@@ -327,18 +309,13 @@ fun EcranCamera(
                     )
                 }
 
-                // Espace pour symétrie
                 Spacer(modifier = Modifier.size(56.dp))
             }
         }
     }
 }
 
-/**
- * Calcule les émotions lissées en moyennant les scores sur l'historique
- * @param history Historique des détections par index de visage
- * @return Map des émotions lissées avec scores moyens
- */
+// Lisse les émotions en moyennant les dernières détections
 private fun calculerEmotionsLissees(
     history: Map<Int, List<EmotionResult>>
 ): Map<Int, EmotionResult> {
@@ -347,7 +324,6 @@ private fun calculerEmotionsLissees(
     history.forEach { (faceIndex, emotionsList) ->
         if (emotionsList.isEmpty()) return@forEach
 
-        // Grouper par nom d'émotion et calculer la moyenne des confidences
         val emotionScores = mutableMapOf<String, MutableList<Float>>()
 
         emotionsList.forEach { emotionResult ->
@@ -357,12 +333,10 @@ private fun calculerEmotionsLissees(
             emotionScores[emotionResult.emotion]?.add(emotionResult.confidence)
         }
 
-        // Calculer la moyenne pour chaque émotion
         val moyennesEmotions = emotionScores.map { (emotion, scores) ->
             emotion to scores.average().toFloat()
         }
 
-        // Sélectionner l'émotion avec le meilleur score moyen
         val meilleureEmotion = moyennesEmotions.maxByOrNull { it.second }
 
         if (meilleureEmotion != null) {

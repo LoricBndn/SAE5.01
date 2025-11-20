@@ -1,8 +1,5 @@
 package com.ltb.sae501.data.models
 
-/**
- * Représente une catégorie d'émotion
- */
 data class EmotionCategory @JvmOverloads constructor(
     var id: String = "",
     var name: String = "",
