@@ -19,6 +19,16 @@ class CategoryService(
         return categoryRepository.findAllByOrderByNameAsc()
     }
 
+    fun getAllCategoriesForUser(userId: String): List<EmotionCategory> {
+        val categories = categoryRepository.findAllByOrderByNameAsc()
+        return categories.map { category ->
+            val userImages = trainingImageRepository.findByCategoryIdAndUserId(category.id, userId)
+            category.trainingImages = userImages.toMutableList()
+            category.imageCount = userImages.size
+            category
+        }
+    }
+
     fun getCategoryById(id: String): EmotionCategory? {
         return categoryRepository.findById(id).orElse(null)
     }
@@ -81,7 +91,7 @@ class CategoryService(
     @Transactional
     fun initializeDefaultCategories(): Boolean {
         if (categoryRepository.count() > 0) {
-            return false // Already initialized
+            return false
         }
 
         val defaultCategories = listOf(

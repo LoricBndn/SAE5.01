@@ -124,7 +124,6 @@ class EmotionDetector(private val context: Context) {
         }
     }
 
-    // Convertir en grayscale pour le modèle
     private fun convertirEnDonnees(bitmap: Bitmap): ByteBuffer {
         val byteBuffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize)
         byteBuffer.order(ByteOrder.nativeOrder())

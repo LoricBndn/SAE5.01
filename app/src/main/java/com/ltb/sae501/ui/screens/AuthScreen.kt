@@ -87,7 +87,6 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Username field
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
@@ -192,19 +191,28 @@ fun AuthScreen(
                                 coroutineScope.launch {
                                     isLoading = true
                                     errorMessage = null
-                                    val success = if (isLoginMode) {
+                                    val result = if (isLoginMode) {
                                         dataSource.login(username, password)
                                     } else {
                                         dataSource.register(username, email, password)
                                     }
                                     isLoading = false
-                                    if (success) {
+                                    result.onSuccess {
                                         onAuthSuccess()
-                                    } else {
-                                        errorMessage = if (isLoginMode) {
-                                            "Identifiants invalides"
-                                        } else {
-                                            "Échec de l'inscription. Le nom d'utilisateur existe peut-être déjà."
+                                    }.onFailure { exception ->
+                                        errorMessage = when {
+                                            exception.message?.contains("Unable to resolve host") == true ||
+                                            exception.message?.contains("Failed to connect") == true ||
+                                            exception is java.net.UnknownHostException ||
+                                            exception is java.net.ConnectException ||
+                                            exception is java.net.SocketTimeoutException -> {
+                                                "Impossible de se connecter au serveur. Vérifiez votre connexion."
+                                            }
+                                            else -> exception.message ?: if (isLoginMode) {
+                                                "Identifiants invalides"
+                                            } else {
+                                                "Échec de l'inscription"
+                                            }
                                         }
                                     }
                                 }
@@ -239,19 +247,28 @@ fun AuthScreen(
                         coroutineScope.launch {
                             isLoading = true
                             errorMessage = null
-                            val success = if (isLoginMode) {
+                            val result = if (isLoginMode) {
                                 dataSource.login(username, password)
                             } else {
                                 dataSource.register(username, email, password)
                             }
                             isLoading = false
-                            if (success) {
+                            result.onSuccess {
                                 onAuthSuccess()
-                            } else {
-                                errorMessage = if (isLoginMode) {
-                                    "Identifiants invalides"
-                                } else {
-                                    "Échec de l'inscription. Le nom d'utilisateur existe peut-être déjà."
+                            }.onFailure { exception ->
+                                errorMessage = when {
+                                    exception.message?.contains("Unable to resolve host") == true ||
+                                    exception.message?.contains("Failed to connect") == true ||
+                                    exception is java.net.UnknownHostException ||
+                                    exception is java.net.ConnectException ||
+                                    exception is java.net.SocketTimeoutException -> {
+                                        "Impossible de se connecter au serveur. Vérifiez votre connexion."
+                                    }
+                                    else -> exception.message ?: if (isLoginMode) {
+                                        "Identifiants invalides"
+                                    } else {
+                                        "Échec de l'inscription"
+                                    }
                                 }
                             }
                         }

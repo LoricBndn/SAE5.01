@@ -47,7 +47,6 @@ fun CategoryManagementScreen(
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
 
-    // Charger les catégories
     LaunchedEffect(retryTrigger) {
         isLoading = true
         hasError = false
@@ -162,7 +161,11 @@ fun CategoryManagementScreen(
                                 },
                                 onDeleteImage = { imageUrl ->
                                     coroutineScope.launch {
-                                        dataSource.deleteTrainingImage(category.id, imageUrl)
+                                        val success = dataSource.deleteTrainingImage(category.id, imageUrl)
+                                        if (success) {
+                                            // Recharger les catégories après la suppression
+                                            retryTrigger++
+                                        }
                                     }
                                 }
                             )
@@ -195,6 +198,8 @@ fun CategoryManagementScreen(
                     isUploading = false
                     if (success) {
                         showAddImageDialog = false
+                        // Recharger les catégories après l'ajout
+                        retryTrigger++
                     } else {
                         uploadError = "Échec de l'upload. Vérifiez votre connexion internet."
                     }

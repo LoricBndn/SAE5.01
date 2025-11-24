@@ -23,8 +23,7 @@ interface ApiService {
     @POST("recognitions")
     suspend fun saveRecognition(
         @Part image: MultipartBody.Part,
-        @Part("emotions") emotions: RequestBody,
-        @Part("userId") userId: RequestBody?
+        @Part("emotions") emotions: RequestBody
     ): Response<RecognitionResponse>
 
     @GET("recognitions")

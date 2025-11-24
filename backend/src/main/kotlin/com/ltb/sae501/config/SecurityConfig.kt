@@ -28,11 +28,13 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/files/**").permitAll()
+                    .requestMatchers("/api/files/training/**").permitAll()
+                    .requestMatchers("/api/files/recognition/**").authenticated()
                     .requestMatchers("/api/categories/initialize").permitAll()
                     .requestMatchers("/api/categories", "/api/categories/*").permitAll()
                     .requestMatchers("/api/categories/*/training-images").authenticated()
                     .requestMatchers("/api/categories/*/training-images/*").authenticated()
+                    .requestMatchers("/api/recognitions/**").authenticated()
                     .anyRequest().permitAll()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

@@ -16,8 +16,14 @@ class CategoryController(
     private val categoryService: CategoryService
 ) {
     @GetMapping
-    fun getAllCategories(): ResponseEntity<List<CategoryResponse>> {
-        val categories = categoryService.getAllCategories()
+    fun getAllCategories(authentication: Authentication?): ResponseEntity<List<CategoryResponse>> {
+        val userId = authentication?.principal as? String
+
+        val categories = if (userId != null) {
+            categoryService.getAllCategoriesForUser(userId)
+        } else {
+            categoryService.getAllCategories()
+        }
 
         val responses = categories.map { category ->
             CategoryResponse(

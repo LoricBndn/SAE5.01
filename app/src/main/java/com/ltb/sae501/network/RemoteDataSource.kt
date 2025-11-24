@@ -25,7 +25,7 @@ class RemoteDataSource(private val context: Context) {
     private val apiService = RetrofitClient.apiService
 
     // Authentication methods
-    suspend fun register(username: String, email: String, password: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun register(username: String, email: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val request = RegisterRequest(username, password, email)
             val response = apiService.register(request)
@@ -35,18 +35,19 @@ class RemoteDataSource(private val context: Context) {
                     val userId = authResponse.userId
                     if (token != null && userId != null) {
                         TokenManager.saveToken(token, userId)
-                        return@withContext true
+                        return@withContext Result.success(true)
                     }
                 }
             }
-            false
+            val errorBody = response.errorBody()?.string()
+            Result.failure(Exception(errorBody ?: "Échec de l'inscription"))
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            Result.failure(e)
         }
     }
 
-    suspend fun login(username: String, password: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun login(username: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val request = AuthRequest(username, password)
             val response = apiService.login(request)
@@ -56,14 +57,15 @@ class RemoteDataSource(private val context: Context) {
                     val userId = authResponse.userId
                     if (token != null && userId != null) {
                         TokenManager.saveToken(token, userId)
-                        return@withContext true
+                        return@withContext Result.success(true)
                     }
                 }
             }
-            false
+            val errorBody = response.errorBody()?.string()
+            Result.failure(Exception(errorBody ?: "Identifiants invalides"))
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            Result.failure(e)
         }
     }
 
@@ -76,22 +78,15 @@ class RemoteDataSource(private val context: Context) {
         recognizedEmotions: List<RecognizedEmotion>
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Convert URI to File and create multipart body
             val imageFile = uriToFile(imageUri)
             val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val imagePart = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
 
-            // Convert emotions list to JSON string
             val emotionsJson = buildEmotionsJson(recognizedEmotions)
             val emotionsBody = emotionsJson.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            // User ID (hardcoded for now, will be replaced with actual authentication)
-            val userIdBody = "user_test_sae501".toRequestBody("text/plain".toMediaTypeOrNull())
+            val response = apiService.saveRecognition(imagePart, emotionsBody)
 
-            // Make API call
-            val response = apiService.saveRecognition(imagePart, emotionsBody, userIdBody)
-
-            // Clean up temp file
             imageFile.delete()
 
             response.isSuccessful
@@ -101,7 +96,6 @@ class RemoteDataSource(private val context: Context) {
         }
     }
 
-    // Récupère l'historique (polling toutes les 3s)
     fun getHistory(): Flow<List<RecognitionResult>> = flow {
         while (true) {
             try {
@@ -128,7 +122,6 @@ class RemoteDataSource(private val context: Context) {
                 e.printStackTrace()
             }
 
-            // Polling interval: 3 seconds
             delay(3000)
         }
     }
@@ -176,7 +169,6 @@ class RemoteDataSource(private val context: Context) {
                 }
             }
 
-            // Polling interval: 5 seconds
             delay(5000)
         }
     }
@@ -189,7 +181,6 @@ class RemoteDataSource(private val context: Context) {
 
             val response = apiService.uploadTrainingImage(categoryId, imagePart)
 
-            // Clean up temp file
             imageFile.delete()
 
             response.isSuccessful
@@ -201,7 +192,6 @@ class RemoteDataSource(private val context: Context) {
 
     suspend fun deleteTrainingImage(categoryId: String, imageUrl: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Extract image ID from URL
             val imageId = extractImageIdFromUrl(imageUrl)
             if (imageId == null) return@withContext false
 
@@ -247,17 +237,15 @@ class RemoteDataSource(private val context: Context) {
             return relativeUrl
         }
 
-        // Otherwise, build full URL
-        val baseUrl = RetrofitClient.apiService.toString()
-            .substringBefore("/api/")
-            .replace("Proxy", "")
-            .trim()
+        // Otherwise, build full URL using BuildConfig
+        val baseUrl = com.ltb.sae501.BuildConfig.API_BASE_URL
+            .removeSuffix("/api/")
+            .removeSuffix("/")
 
-        return "http://10.0.2.2:8080$relativeUrl"
+        return "$baseUrl$relativeUrl"
     }
 
     private fun extractImageIdFromUrl(url: String): String? {
-        // Extract image ID from URL like "/api/files/training/{imageId}"
         return url.substringAfterLast("/").takeIf { it.isNotBlank() }
     }
 }

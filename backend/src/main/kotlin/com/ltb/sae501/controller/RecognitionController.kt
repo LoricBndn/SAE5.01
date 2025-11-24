@@ -6,6 +6,7 @@ import com.ltb.sae501.dto.RecognizedEmotionDto
 import com.ltb.sae501.service.RecognitionService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import java.util.*
@@ -20,12 +21,12 @@ class RecognitionController(
     fun saveRecognition(
         @RequestParam("image") imageFile: MultipartFile,
         @RequestParam("emotions") emotionsJson: String,
-        @RequestParam("userId", required = false) userId: String?
+        authentication: Authentication
     ): ResponseEntity<RecognitionResponse> {
         try {
-            // Parse emotions JSON (format: [{"emotion":"Joie","confidence":0.95}, ...])
             val emotions = parseEmotionsJson(emotionsJson)
 
+            val userId = authentication.principal as String
             val imageData = imageFile.bytes
             val recognition = recognitionService.saveRecognition(imageData, emotions, userId)
 
@@ -48,8 +49,9 @@ class RecognitionController(
     }
 
     @GetMapping
-    fun getAllRecognitions(): ResponseEntity<List<RecognitionResponse>> {
-        val recognitions = recognitionService.getAllRecognitions()
+    fun getAllRecognitions(authentication: Authentication): ResponseEntity<List<RecognitionResponse>> {
+        val userId = authentication.principal as String
+        val recognitions = recognitionService.getRecognitionsByUser(userId)
 
         val responses = recognitions.map { recognition ->
             RecognitionResponse(
@@ -67,9 +69,17 @@ class RecognitionController(
     }
 
     @GetMapping("/{id}")
-    fun getRecognitionById(@PathVariable id: String): ResponseEntity<RecognitionResponse> {
+    fun getRecognitionById(
+        @PathVariable id: String,
+        authentication: Authentication
+    ): ResponseEntity<RecognitionResponse> {
+        val userId = authentication.principal as String
         val recognition = recognitionService.getRecognitionById(id)
             ?: return ResponseEntity.notFound().build()
+
+        if (recognition.user?.id != userId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
 
         val response = RecognitionResponse(
             id = recognition.id,
@@ -85,7 +95,18 @@ class RecognitionController(
     }
 
     @DeleteMapping("/{id}")
-    fun deleteRecognition(@PathVariable id: String): ResponseEntity<Void> {
+    fun deleteRecognition(
+        @PathVariable id: String,
+        authentication: Authentication
+    ): ResponseEntity<Void> {
+        val userId = authentication.principal as String
+        val recognition = recognitionService.getRecognitionById(id)
+            ?: return ResponseEntity.notFound().build()
+
+        if (recognition.user?.id != userId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+        }
+
         return if (recognitionService.deleteRecognition(id)) {
             ResponseEntity.noContent().build()
         } else {
@@ -94,7 +115,6 @@ class RecognitionController(
     }
 
     private fun parseEmotionsJson(json: String): List<Pair<String, Float>> {
-        // Simple JSON parsing for format: [{"emotion":"Joie","confidence":0.95}, ...]
         val emotions = mutableListOf<Pair<String, Float>>()
         val regex = """"emotion"\s*:\s*"([^"]+)"\s*,\s*"confidence"\s*:\s*([\d.]+)""".toRegex()
 
