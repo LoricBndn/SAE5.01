@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,25 +28,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ltb.sae501.data.models.EmotionCategory
-import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.network.RemoteDataSource
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
+fun CategoryManagementScreen(
+    dataSource: RemoteDataSource,
+    onLogout: () -> Unit = {}
+) {
     val coroutineScope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<EmotionCategory>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<EmotionCategory?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+    var retryTrigger by remember { mutableStateOf(0) }
     var showAddImageDialog by remember { mutableStateOf(false) }
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
 
-    // Charger les catégories
-    LaunchedEffect(Unit) {
+    LaunchedEffect(retryTrigger) {
+        isLoading = true
+        hasError = false
         dataSource.getCategories().collect { loadedCategories ->
-            categories = loadedCategories
             isLoading = false
+            if (loadedCategories.isEmpty()) {
+                hasError = true
+            } else {
+                categories = loadedCategories
+                hasError = false
+            }
         }
     }
 
@@ -53,6 +65,15 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
         topBar = {
             TopAppBar(
                 title = { Text("Gestion des Émotions") },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Déconnexion",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF2A2A2A),
                     titleContentColor = Color.White
@@ -60,41 +81,95 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color(0xFFF18E06))
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF1E1E1E))
-                    .padding(paddingValues)
-            ) {
-                // Liste des catégories
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(categories) { category ->
-                        CategoryCard(
-                            category = category,
-                            onClick = {
-                                selectedCategory = category
-                                showAddImageDialog = true
-                            },
-                            onDeleteImage = { imageUrl ->
-                                coroutineScope.launch {
-                                    dataSource.deleteTrainingImage(category.id, imageUrl)
-                                }
-                            }
+                    CircularProgressIndicator(color = Color(0xFFF18E06))
+                }
+            }
+            hasError -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF1E1E1E))
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Text(
+                            text = "⚠️",
+                            fontSize = 64.sp
                         )
+                        Text(
+                            text = "Impossible de se connecter au serveur",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Vérifiez que le serveur backend est démarré et accessible.",
+                            color = Color(0xFFB0B0B0),
+                            fontSize = 14.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Text(
+                            text = "Sur un appareil physique, assurez-vous d'être sur le même réseau WiFi que le serveur.",
+                            color = Color(0xFFB0B0B0),
+                            fontSize = 12.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Button(
+                            onClick = { retryTrigger++ },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFF18E06)
+                            ),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Réessayer")
+                        }
+                    }
+                }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF1E1E1E))
+                        .padding(paddingValues)
+                ) {
+                    // Liste des catégories
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(categories) { category ->
+                            CategoryCard(
+                                category = category,
+                                onClick = {
+                                    selectedCategory = category
+                                    showAddImageDialog = true
+                                },
+                                onDeleteImage = { imageUrl ->
+                                    coroutineScope.launch {
+                                        val success = dataSource.deleteTrainingImage(category.id, imageUrl)
+                                        if (success) {
+                                            // Recharger les catégories après la suppression
+                                            retryTrigger++
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -123,6 +198,8 @@ fun CategoryManagementScreen(dataSource: FirebaseDataSource) {
                     isUploading = false
                     if (success) {
                         showAddImageDialog = false
+                        // Recharger les catégories après l'ajout
+                        retryTrigger++
                     } else {
                         uploadError = "Échec de l'upload. Vérifiez votre connexion internet."
                     }

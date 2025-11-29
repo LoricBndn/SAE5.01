@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.ui.theme.AccentPink
 import com.ltb.sae501.ui.theme.AccentDelete
 import kotlinx.coroutines.launch
@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     isDarkModeEnabled: Boolean,
     onSetDarkMode: (Boolean) -> Unit,
-    dataSource: FirebaseDataSource = FirebaseDataSource(),
+    dataSource: RemoteDataSource,
     onNavigateToCategoryManagement: () -> Unit = {}
 ) {
     var isPercentageShown by remember { mutableStateOf(true) }

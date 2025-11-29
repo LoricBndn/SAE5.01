@@ -1,0 +1,251 @@
+package com.ltb.sae501.network
+
+import android.content.Context
+import android.net.Uri
+import com.ltb.sae501.auth.TokenManager
+import com.ltb.sae501.data.models.EmotionCategory
+import com.ltb.sae501.data.models.RecognitionResult
+import com.ltb.sae501.data.models.RecognizedEmotion
+import com.ltb.sae501.network.dto.AuthRequest
+import com.ltb.sae501.network.dto.RecognizedEmotionDto
+import com.ltb.sae501.network.dto.RegisterRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+
+class RemoteDataSource(private val context: Context) {
+    private val apiService = RetrofitClient.apiService
+
+    // Authentication methods
+    suspend fun register(username: String, email: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val request = RegisterRequest(username, password, email)
+            val response = apiService.register(request)
+            if (response.isSuccessful) {
+                response.body()?.let { authResponse ->
+                    val token = authResponse.token
+                    val userId = authResponse.userId
+                    if (token != null && userId != null) {
+                        TokenManager.saveToken(token, userId)
+                        return@withContext Result.success(true)
+                    }
+                }
+            }
+            val errorBody = response.errorBody()?.string()
+            Result.failure(Exception(errorBody ?: "Échec de l'inscription"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun login(username: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val request = AuthRequest(username, password)
+            val response = apiService.login(request)
+            if (response.isSuccessful) {
+                response.body()?.let { authResponse ->
+                    val token = authResponse.token
+                    val userId = authResponse.userId
+                    if (token != null && userId != null) {
+                        TokenManager.saveToken(token, userId)
+                        return@withContext Result.success(true)
+                    }
+                }
+            }
+            val errorBody = response.errorBody()?.string()
+            Result.failure(Exception(errorBody ?: "Identifiants invalides"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    fun logout() {
+        TokenManager.clearToken()
+    }
+
+    suspend fun saveRecognition(
+        imageUri: Uri,
+        recognizedEmotions: List<RecognizedEmotion>
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val imageFile = uriToFile(imageUri)
+            val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
+
+            val emotionsJson = buildEmotionsJson(recognizedEmotions)
+            val emotionsBody = emotionsJson.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = apiService.saveRecognition(imagePart, emotionsBody)
+
+            imageFile.delete()
+
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun getHistory(): Flow<List<RecognitionResult>> = flow {
+        while (true) {
+            try {
+                val response = apiService.getAllRecognitions()
+                if (response.isSuccessful) {
+                    val recognitions = response.body()?.map { dto ->
+                        RecognitionResult(
+                            id = dto.id,
+                            timestamp = dto.timestamp,
+                            imageStorageUrl = buildImageUrl(dto.imageUrl),
+                            recognizedEmotions = dto.recognizedEmotions.map { emotionDto ->
+                                RecognizedEmotion(
+                                    emotion = emotionDto.emotion,
+                                    confidence = emotionDto.confidence
+                                )
+                            },
+                            userId = dto.userId
+                        )
+                    } ?: emptyList()
+
+                    emit(recognitions)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            delay(3000)
+        }
+    }
+
+    fun getCategories(): Flow<List<EmotionCategory>> = flow {
+        var consecutiveFailures = 0
+        val maxFailures = 3
+
+        while (true) {
+            try {
+                val response = apiService.getAllCategories()
+                if (response.isSuccessful) {
+                    consecutiveFailures = 0 // Reset counter on success
+                    val categories = response.body()?.map { dto ->
+                        EmotionCategory(
+                            id = dto.id,
+                            name = dto.name,
+                            nameEn = dto.nameEn,
+                            emoji = dto.emoji,
+                            color = dto.color,
+                            description = dto.description,
+                            imageCount = dto.imageCount,
+                            trainingImages = dto.trainingImages.map { buildImageUrl(it) },
+                            createdAt = dto.createdAt,
+                            lastUpdated = dto.lastUpdated
+                        )
+                    } ?: emptyList()
+
+                    emit(categories.sortedBy { it.name })
+                } else {
+                    consecutiveFailures++
+                    if (consecutiveFailures >= maxFailures) {
+                        // Emit empty list to signal error state
+                        emit(emptyList())
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                consecutiveFailures++
+                if (consecutiveFailures >= maxFailures) {
+                    // Emit empty list and stop polling after multiple failures
+                    emit(emptyList())
+                    break
+                }
+            }
+
+            delay(5000)
+        }
+    }
+
+    suspend fun uploadTrainingImage(categoryId: String, imageUri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val imageFile = uriToFile(imageUri)
+            val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
+
+            val response = apiService.uploadTrainingImage(categoryId, imagePart)
+
+            imageFile.delete()
+
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun deleteTrainingImage(categoryId: String, imageUrl: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val imageId = extractImageIdFromUrl(imageUrl)
+            if (imageId == null) return@withContext false
+
+            val response = apiService.deleteTrainingImage(categoryId, imageId)
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun initializeDefaultCategories(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.initializeCategories()
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    private fun uriToFile(uri: Uri): File {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
+        inputStream?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        return tempFile
+    }
+
+    private fun buildEmotionsJson(emotions: List<RecognizedEmotion>): String {
+        val emotionStrings = emotions.joinToString(",") { emotion ->
+            """{"emotion":"${emotion.emotion}","confidence":${emotion.confidence}}"""
+        }
+        return "[$emotionStrings]"
+    }
+
+    private fun buildImageUrl(relativeUrl: String): String {
+        // If URL is already absolute, return as is
+        if (relativeUrl.startsWith("http")) {
+            return relativeUrl
+        }
+
+        // Otherwise, build full URL using BuildConfig
+        val baseUrl = com.ltb.sae501.BuildConfig.API_BASE_URL
+            .removeSuffix("/api/")
+            .removeSuffix("/")
+
+        return "$baseUrl$relativeUrl"
+    }
+
+    private fun extractImageIdFromUrl(url: String): String? {
+        return url.substringAfterLast("/").takeIf { it.isNotBlank() }
+    }
+}

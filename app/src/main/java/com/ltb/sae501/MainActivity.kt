@@ -19,8 +19,9 @@ import com.ltb.sae501.ui.navigation.Screen
 import com.ltb.sae501.ui.screens.*
 import com.ltb.sae501.ui.theme.SAE501Theme
 import java.util.concurrent.Executors
-import com.ltb.sae501.firebase.FirebaseDataSource
+import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.ui.screens.CategoryManagementScreen
+import com.ltb.sae501.auth.TokenManager
 
 class MainActivity : ComponentActivity() {
 
@@ -29,12 +30,14 @@ class MainActivity : ComponentActivity() {
     private val executeurEmotion = Executors.newSingleThreadExecutor()
     private lateinit var detecteurEmotion: EmotionDetector
 
-    private val firebaseDataSource = FirebaseDataSource()
+    private lateinit var dataSource: RemoteDataSource
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        TokenManager.init(this)
+        dataSource = RemoteDataSource(this)
         detecteurEmotion = EmotionDetector(this)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -49,6 +52,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
+            var isAuthenticated by remember { mutableStateOf(TokenManager.isLoggedIn()) }
 
             SAE501Theme(darkTheme = isDarkTheme) {
                 var currentScreen by remember { mutableStateOf(Screen.Home.route) }
@@ -74,21 +78,49 @@ class MainActivity : ComponentActivity() {
                             Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
                                 executeurEmotion = executeurEmotion,
-                                dataSource = firebaseDataSource
+                                dataSource = dataSource
                             )
                             Screen.History.route -> HistoryScreen(
-                                dataSource = firebaseDataSource
+                                dataSource = dataSource
                             )
                             Screen.Settings.route -> SettingsScreen(
-                                dataSource = firebaseDataSource,
+                                dataSource = dataSource,
                                 onNavigateToCategoryManagement = {
-                                    currentScreen = "category_management"
+                                    if (TokenManager.isLoggedIn()) {
+                                        currentScreen = "category_management"
+                                    } else {
+                                        currentScreen = "auth"
+                                    }
                                 },
                                 isDarkModeEnabled = isDarkTheme,
                                 onSetDarkMode = { isDarkTheme = it }
                             )
-                            "category_management" -> CategoryManagementScreen(
-                                dataSource = firebaseDataSource
+                            "category_management" -> {
+                                if (TokenManager.isLoggedIn()) {
+                                    CategoryManagementScreen(
+                                        dataSource = dataSource,
+                                        onLogout = {
+                                            dataSource.logout()
+                                            isAuthenticated = false
+                                            currentScreen = Screen.Settings.route
+                                        }
+                                    )
+                                } else {
+                                    AuthScreen(
+                                        dataSource = dataSource,
+                                        onAuthSuccess = {
+                                            isAuthenticated = true
+                                            currentScreen = "category_management"
+                                        }
+                                    )
+                                }
+                            }
+                            "auth" -> AuthScreen(
+                                dataSource = dataSource,
+                                onAuthSuccess = {
+                                    isAuthenticated = true
+                                    currentScreen = "category_management"
+                                }
                             )
                         }
                     }
