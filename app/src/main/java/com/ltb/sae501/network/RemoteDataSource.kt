@@ -248,4 +248,60 @@ class RemoteDataSource(private val context: Context) {
     private fun extractImageIdFromUrl(url: String): String? {
         return url.substringAfterLast("/").takeIf { it.isNotBlank() }
     }
+
+    suspend fun startTraining(): Map<String, String>? = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.startTraining()
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun getTrainingStatus(): com.ltb.sae501.network.dto.TrainingStatusResponse? = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.getTrainingStatus()
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun downloadCustomModel(): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.downloadCustomModel()
+            if (response.isSuccessful) {
+                response.body()?.bytes()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun downloadAllTrainingImages(): com.ltb.sae501.network.dto.TrainingImagesResponse? = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.downloadAllTrainingImages()
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

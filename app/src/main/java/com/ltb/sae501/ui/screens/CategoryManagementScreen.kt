@@ -35,7 +35,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun CategoryManagementScreen(
     dataSource: RemoteDataSource,
-    onLogout: () -> Unit = {}
+    metadataManager: com.ltb.sae501.ml.ModelMetadataManager,
+    onLogout: () -> Unit = {},
+    onNavigateToTraining: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<EmotionCategory>>(emptyList()) }
@@ -46,6 +48,11 @@ fun CategoryManagementScreen(
     var showAddImageDialog by remember { mutableStateOf(false) }
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
+    var modelMetadata by remember { mutableStateOf<com.ltb.sae501.ml.ModelMetadata?>(null) }
+
+    LaunchedEffect(Unit) {
+        modelMetadata = metadataManager.loadMetadata()
+    }
 
     LaunchedEffect(retryTrigger) {
         isLoading = true
@@ -152,6 +159,79 @@ fun CategoryManagementScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        text = "Modèle Personnalisé",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+
+                                    if (modelMetadata != null) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("✓", fontSize = 20.sp, color = Color(0xFF4CAF50))
+                                            Column {
+                                                Text(
+                                                    "Modèle entraîné (Précision: ${(modelMetadata!!.accuracy * 100).toInt()}%)",
+                                                    color = Color(0xFF4CAF50),
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 14.sp
+                                                )
+                                                Text(
+                                                    "Dernière mise à jour: ${java.text.SimpleDateFormat("dd/MM/yyyy").format(java.util.Date(modelMetadata!!.trainingDate))}",
+                                                    color = Color(0xFFB0B0B0),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
+                                        Button(
+                                            onClick = onNavigateToTraining,
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Réentraîner le Modèle")
+                                        }
+                                    } else {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("⚠", fontSize = 20.sp, color = Color(0xFFF18E06))
+                                            Text(
+                                                "Aucun modèle personnalisé",
+                                                color = Color(0xFFF18E06),
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        Text(
+                                            "Uploadez au moins 10 images par catégorie puis entraînez votre modèle",
+                                            color = Color(0xFFB0B0B0),
+                                            fontSize = 12.sp
+                                        )
+                                        Button(
+                                            onClick = onNavigateToTraining,
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Entraîner le Modèle")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         items(categories) { category ->
                             CategoryCard(
                                 category = category,

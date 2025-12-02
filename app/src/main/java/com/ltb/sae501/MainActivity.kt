@@ -22,6 +22,7 @@ import java.util.concurrent.Executors
 import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.ui.screens.CategoryManagementScreen
 import com.ltb.sae501.auth.TokenManager
+import com.ltb.sae501.ml.ModelMetadataManager
 
 class MainActivity : ComponentActivity() {
 
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var detecteurEmotion: EmotionDetector
 
     private lateinit var dataSource: RemoteDataSource
+    private lateinit var metadataManager: ModelMetadataManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +41,7 @@ class MainActivity : ComponentActivity() {
         TokenManager.init(this)
         dataSource = RemoteDataSource(this)
         detecteurEmotion = EmotionDetector(this)
+        metadataManager = ModelMetadataManager(this)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
@@ -99,10 +102,14 @@ class MainActivity : ComponentActivity() {
                                 if (TokenManager.isLoggedIn()) {
                                     CategoryManagementScreen(
                                         dataSource = dataSource,
+                                        metadataManager = metadataManager,
                                         onLogout = {
                                             dataSource.logout()
                                             isAuthenticated = false
                                             currentScreen = Screen.Settings.route
+                                        },
+                                        onNavigateToTraining = {
+                                            currentScreen = "model_training"
                                         }
                                     )
                                 } else {
@@ -111,6 +118,25 @@ class MainActivity : ComponentActivity() {
                                         onAuthSuccess = {
                                             isAuthenticated = true
                                             currentScreen = "category_management"
+                                        }
+                                    )
+                                }
+                            }
+                            "model_training" -> {
+                                if (TokenManager.isLoggedIn()) {
+                                    TrainingScreen(
+                                        dataSource = dataSource,
+                                        metadataManager = metadataManager,
+                                        onNavigateBack = {
+                                            currentScreen = "category_management"
+                                        }
+                                    )
+                                } else {
+                                    AuthScreen(
+                                        dataSource = dataSource,
+                                        onAuthSuccess = {
+                                            isAuthenticated = true
+                                            currentScreen = "model_training"
                                         }
                                     )
                                 }
