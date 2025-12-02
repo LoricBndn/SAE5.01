@@ -88,6 +88,13 @@ class CategoryService(
         return category
     }
 
+    fun getAllTrainingImagesForUser(userId: String): Map<EmotionCategory, List<TrainingImage>> {
+        val categories = categoryRepository.findAllByOrderByNameAsc()
+        return categories.associateWith { category ->
+            trainingImageRepository.findByCategoryIdAndUserId(category.id, userId)
+        }.filterValues { it.isNotEmpty() }
+    }
+
     @Transactional
     fun initializeDefaultCategories(): Boolean {
         if (categoryRepository.count() > 0) {
