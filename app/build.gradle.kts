@@ -85,6 +85,10 @@ dependencies {
     // TensorFlow Lite
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
+
+    // Gson pour la sérialisation JSON
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Coil (Librairie pour le chargement asynchrone d'images)
     implementation("io.coil-kt:coil-compose:2.5.0")
