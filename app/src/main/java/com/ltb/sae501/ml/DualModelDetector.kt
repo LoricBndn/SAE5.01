@@ -59,7 +59,12 @@ class DualModelDetector(private val context: Context) {
                         setNumThreads(4)
                     }
                     customInterpreter = Interpreter(modelFile, options)
+                    val metadata = metadataManager.loadMetadata()
                     Log.d(TAG, "Modèle personnalisé chargé avec succès (${modelFile.length()} bytes)")
+                    if (metadata != null) {
+                        Log.d(TAG, "Métadonnées modèle: précision=${(metadata.accuracy * 100).toInt()}%, images=${metadata.trainingImageCount}")
+                    }
+                    Log.d(TAG, "Double IA activée: modèle de base + modèle personnalisé")
                 } else {
                     Log.w(TAG, "Fichier modèle personnalisé existe mais est vide")
                 }
@@ -72,11 +77,9 @@ class DualModelDetector(private val context: Context) {
         }
     }
 
-    /**
-     * Recharge le modèle personnalisé (appelé après un entraînement)
-     */
     fun reloadCustomModel() {
         try {
+            Log.d(TAG, "Rechargement du modèle personnalisé...")
             customInterpreter?.close()
             customInterpreter = null
             chargerModelePersonnalise()
@@ -85,9 +88,6 @@ class DualModelDetector(private val context: Context) {
         }
     }
 
-    /**
-     * Extrait le visage de l'image avec une marge de 20%
-     */
     fun extraireVisage(bitmap: Bitmap, face: Face): Bitmap? {
         try {
             val bbox = face.boundingBox
@@ -114,9 +114,7 @@ class DualModelDetector(private val context: Context) {
         }
     }
 
-    /**
-     * Détecte l'émotion en utilisant le modèle dual (base + custom)
-     */
+    // détection avec les 2 modèles
     fun detecterEmotion(visageBitmap: Bitmap): CombinedEmotionResult? {
         try {
             if (baseInterpreter == null) {
@@ -141,8 +139,10 @@ class DualModelDetector(private val context: Context) {
             // Inférence avec le modèle personnalisé (si disponible)
             val customProbabilities = if (customInterpreter != null) {
                 try {
+                    Log.d(TAG, "Exécution inférence sur modèle personnalisé")
                     val customResults = Array(1) { FloatArray(labels.size) }
                     customInterpreter?.run(donnees.duplicate(), customResults)
+                    Log.d(TAG, "Inférence modèle personnalisé réussie")
                     customResults[0]
                 } catch (e: Exception) {
                     Log.e(TAG, "Erreur inférence modèle personnalisé: ${e.message}", e)
@@ -153,7 +153,9 @@ class DualModelDetector(private val context: Context) {
             }
 
             // Combiner les prédictions
-            return PredictionCombiner.combine(baseProbabilities, customProbabilities, labels)
+            val result = PredictionCombiner.combine(baseProbabilities, customProbabilities, labels)
+            Log.d(TAG, "Résultat détection: émotion=${result.emotion}, confiance=${result.confidence}, source=${result.source}")
+            return result
 
         } catch (e: Exception) {
             Log.e(TAG, "Erreur détection émotion: ${e.message}", e)
@@ -161,9 +163,7 @@ class DualModelDetector(private val context: Context) {
         }
     }
 
-    /**
-     * Convertit le bitmap en données d'entrée pour le modèle TFLite
-     */
+    // bitmap vers données TFLite
     private fun convertirEnDonnees(bitmap: Bitmap): ByteBuffer {
         val byteBuffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize)
         byteBuffer.order(ByteOrder.nativeOrder())
@@ -176,7 +176,7 @@ class DualModelDetector(private val context: Context) {
             val vert = (pixel shr 8) and 0xFF
             val bleu = pixel and 0xFF
 
-            // Conversion en niveaux de gris (luminosité)
+            // grayscale
             val gris = (0.299f * rouge + 0.587f * vert + 0.114f * bleu)
             val valeurNormalisee = gris / 255.0f
 
@@ -187,9 +187,7 @@ class DualModelDetector(private val context: Context) {
         return byteBuffer
     }
 
-    /**
-     * Duplique le ByteBuffer pour pouvoir l'utiliser plusieurs fois
-     */
+    // pour réutiliser le buffer
     private fun ByteBuffer.duplicate(): ByteBuffer {
         val duplicate = ByteBuffer.allocateDirect(this.capacity())
         duplicate.order(this.order())
@@ -200,23 +198,14 @@ class DualModelDetector(private val context: Context) {
         return duplicate
     }
 
-    /**
-     * Vérifie si un modèle personnalisé est chargé
-     */
     fun hasCustomModel(): Boolean {
         return customInterpreter != null
     }
 
-    /**
-     * Récupère les métadonnées du modèle personnalisé
-     */
     fun getCustomModelMetadata(): ModelMetadata? {
         return metadataManager.loadMetadata()
     }
 
-    /**
-     * Ferme les interpréteurs et libère les ressources
-     */
     fun fermer() {
         try {
             baseInterpreter?.close()

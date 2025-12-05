@@ -32,9 +32,7 @@ class ModelTrainer(
         private const val ENABLE_AUGMENTATION = true
     }
 
-    /**
-     * Valide que l'utilisateur a suffisamment d'images pour entraîner
-     */
+    // check si assez d'images
     suspend fun validateTrainingReadiness(): ValidationResult = withContext(Dispatchers.IO) {
         try {
             val imagesResponse = dataSource.downloadAllTrainingImages()
@@ -61,9 +59,6 @@ class ModelTrainer(
         }
     }
 
-    /**
-     * Télécharge toutes les images d'entraînement depuis le backend
-     */
     private suspend fun downloadTrainingImages(): TrainingImagesResponse? = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Téléchargement des images d'entraînement...")
@@ -74,9 +69,7 @@ class ModelTrainer(
         }
     }
 
-    /**
-     * Prétraite les images : détection de visage, redimensionnement, augmentation
-     */
+    // détection visage + resize + augmentation
     private suspend fun preprocessImages(
         imagesResponse: TrainingImagesResponse,
         progressCallback: (Int, String) -> Unit
@@ -201,9 +194,6 @@ class ModelTrainer(
         )
     }
 
-    /**
-     * Convertit un bitmap en niveaux de gris
-     */
     private fun convertToGrayscale(bitmap: Bitmap): Bitmap {
         val grayscale = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(grayscale)
@@ -214,17 +204,11 @@ class ModelTrainer(
         return grayscale
     }
 
-    /**
-     * Rotation d'un bitmap
-     */
     private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
         val matrix = Matrix().apply { postRotate(degrees) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    /**
-     * Ajustement de la luminosité
-     */
     private fun adjustBrightness(bitmap: Bitmap, factor: Float): Bitmap {
         val adjusted = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(adjusted)
@@ -242,18 +226,12 @@ class ModelTrainer(
         return adjusted
     }
 
-    /**
-     * Inversion horizontale
-     */
     private fun flipHorizontal(bitmap: Bitmap): Bitmap {
         val matrix = Matrix().apply { preScale(-1f, 1f) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    /**
-     * Entraîne le modèle personnalisé
-     * Cette méthode orchestre tout le pipeline d'entraînement
-     */
+    // lance l'entraînement
     suspend fun trainModel(
         progressCallback: (Int, String) -> Unit
     ): TrainingResult = withContext(Dispatchers.IO) {
@@ -323,11 +301,7 @@ class ModelTrainer(
         }
     }
 
-    /**
-     * Nettoie les ressources temporaires
-     */
     fun cleanup() {
-        // Nettoyage des bitmaps temporaires si nécessaire
         Log.d(TAG, "Nettoyage des ressources")
     }
 }

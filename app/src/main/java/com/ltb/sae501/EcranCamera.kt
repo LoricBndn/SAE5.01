@@ -204,7 +204,6 @@ fun EcranCamera(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Overlay pour afficher les boîtes englobantes et les résultats d'émotion
         FaceOverlay(
             faces = visages,
             emotions = emotions,
@@ -257,7 +256,6 @@ fun EcranCamera(
                                     override fun onError(exc: ImageCaptureException) {
                                         println("Erreur capture photo: ${exc.message}")
                                         exc.printStackTrace()
-                                        // TODO: Afficher un Toast d'erreur
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
@@ -280,10 +278,8 @@ fun EcranCamera(
                                                 )
                                                 if (success) {
                                                     println("Sauvegardé!")
-                                                    // TODO: Toast succès
                                                 } else {
                                                     println("Échec sauvegarde")
-                                                    // TODO: Toast erreur
                                                 }
                                             }
                                         } else {
@@ -315,7 +311,7 @@ fun EcranCamera(
     }
 }
 
-// Lisse les émotions en moyennant les dernières détections
+// moyenne des dernières détections
 private fun calculerEmotionsLissees(
     history: Map<Int, List<EmotionResult>>
 ): Map<Int, EmotionResult> {

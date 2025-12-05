@@ -1,19 +1,21 @@
 package com.ltb.sae501.ml
 
+import android.util.Log
+
 object PredictionCombiner {
 
-    /**
-     * Combine les prédictions du modèle de base et du modèle personnalisé
-     * en utilisant une stratégie adaptive basée sur la confiance
-     */
+    private const val TAG = "PredictionCombiner"
+
+    // combine les 2 modèles selon la confiance
     fun combine(
         baseProbabilities: FloatArray,
         customProbabilities: FloatArray?,
         labels: List<String>
     ): CombinedEmotionResult {
 
-        // Cas 1: Aucun modèle personnalisé - utiliser uniquement le modèle de base
+        // pas de modèle custom
         if (customProbabilities == null) {
+            Log.d(TAG, "Aucun modèle personnalisé disponible - utilisation modèle de base uniquement")
             val maxIndex = baseProbabilities.indices.maxByOrNull { baseProbabilities[it] } ?: 0
             return CombinedEmotionResult(
                 emotion = labels[maxIndex],
@@ -28,8 +30,9 @@ object PredictionCombiner {
 
         val baseMaxProb = baseProbabilities.maxOrNull() ?: 0f
 
-        // Cas 2: Haute confiance du modèle de base (>0.8) - faire confiance au modèle de base
+        // confiance élevée du base
         if (baseMaxProb > 0.8f) {
+            Log.d(TAG, "Haute confiance modèle de base (${baseMaxProb}) - utilisation modèle de base uniquement")
             val maxIndex = baseProbabilities.indices.maxByOrNull { baseProbabilities[it] } ?: 0
             return CombinedEmotionResult(
                 emotion = labels[maxIndex],
@@ -42,12 +45,14 @@ object PredictionCombiner {
             )
         }
 
-        // Cas 3 & 4: Combiner les modèles avec pondération adaptive
+        // pondération adaptative
         val weights = if (baseMaxProb < 0.5f) {
-            // Basse confiance du modèle de base - privilégier le modèle personnalisé
+            // confiance basse base -> priorité custom
+            Log.d(TAG, "Basse confiance modèle de base (${baseMaxProb}) - combinaison hybride avec priorité au modèle personnalisé (30/70)")
             Pair(0.3f, 0.7f) // 30% base, 70% custom
         } else {
-            // Confiance moyenne du modèle de base
+            // confiance moyenne
+            Log.d(TAG, "Confiance moyenne modèle de base (${baseMaxProb}) - combinaison hybride équilibrée (60/40)")
             Pair(0.6f, 0.4f) // 60% base, 40% custom
         }
 
@@ -57,6 +62,7 @@ object PredictionCombiner {
 
         val maxIndex = combined.indices.maxByOrNull { combined[it] } ?: 0
 
+        Log.d(TAG, "Résultat combinaison hybride: émotion=${labels[maxIndex]}, confiance=${combined[maxIndex]}")
         return CombinedEmotionResult(
             emotion = labels[maxIndex],
             confidence = combined[maxIndex],
@@ -68,9 +74,6 @@ object PredictionCombiner {
         )
     }
 
-    /**
-     * Variante permettant de spécifier une stratégie de combinaison explicite
-     */
     fun combineWithStrategy(
         baseProbabilities: FloatArray,
         customProbabilities: FloatArray?,
@@ -154,8 +157,8 @@ object PredictionCombiner {
 }
 
 enum class CombinationStrategy {
-    ADAPTIVE,           // Stratégie adaptive basée sur la confiance (recommandée)
-    WEIGHTED_AVERAGE,   // Moyenne pondérée fixe (60% base, 40% custom)
-    CUSTOM_ONLY,        // Utiliser uniquement le modèle personnalisé
-    BASE_ONLY           // Utiliser uniquement le modèle de base
+    ADAPTIVE,
+    WEIGHTED_AVERAGE,
+    CUSTOM_ONLY,
+    BASE_ONLY
 }
