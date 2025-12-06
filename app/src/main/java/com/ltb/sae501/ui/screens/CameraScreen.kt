@@ -9,11 +9,15 @@ import com.ltb.sae501.network.RemoteDataSource
 fun CameraScreen(
     detecteurEmotion: EmotionDetector,
     executeurEmotion: java.util.concurrent.ExecutorService,
-    dataSource: RemoteDataSource
+    dataSource: RemoteDataSource,
+    isFrontCamera: Boolean,
+    onCameraFlipped: (Boolean) -> Unit
 ) {
     EcranCamera(
         detecteurEmotion = detecteurEmotion,
         executeurEmotion = executeurEmotion,
-        dataSource = dataSource
+        dataSource = dataSource,
+        isFrontCamera = isFrontCamera,
+        onCameraFlipped = onCameraFlipped
     )
 }

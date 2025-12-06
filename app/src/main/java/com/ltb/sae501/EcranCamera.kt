@@ -41,7 +41,9 @@ import java.util.concurrent.Executors
 fun EcranCamera(
     detecteurEmotion: EmotionDetector,
     executeurEmotion: java.util.concurrent.ExecutorService,
-    dataSource: RemoteDataSource
+    dataSource: RemoteDataSource,
+    isFrontCamera: Boolean,
+    onCameraFlipped: (Boolean) -> Unit
 ) {
 
     val context = LocalContext.current
@@ -53,7 +55,6 @@ fun EcranCamera(
     var largeurImage by remember { mutableIntStateOf(0) }
     var hauteurImage by remember { mutableIntStateOf(0) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    var isFrontCamera by remember { mutableStateOf(true) }
 
     var enCoursAnalyse by remember { mutableStateOf(false) }
 
@@ -64,6 +65,7 @@ fun EcranCamera(
 
     val previewView = remember { PreviewView(context) }
 
+    // Réinitialiser l'état quand on change de caméra
     LaunchedEffect(isFrontCamera) {
         frameCounter = 0
         emotionHistory.clear()
@@ -204,6 +206,7 @@ fun EcranCamera(
             modifier = Modifier.fillMaxSize()
         )
 
+        // Overlay pour afficher les boîtes englobantes et les résultats d'émotion
         FaceOverlay(
             faces = visages,
             emotions = emotions,
@@ -225,7 +228,7 @@ fun EcranCamera(
             ) {
                 IconButton(
                     onClick = {
-                        isFrontCamera = !isFrontCamera
+                        onCameraFlipped(!isFrontCamera)
                     },
                     modifier = Modifier
                         .size(56.dp)
@@ -256,6 +259,7 @@ fun EcranCamera(
                                     override fun onError(exc: ImageCaptureException) {
                                         println("Erreur capture photo: ${exc.message}")
                                         exc.printStackTrace()
+                                        // TODO: Afficher un Toast d'erreur
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
@@ -278,8 +282,10 @@ fun EcranCamera(
                                                 )
                                                 if (success) {
                                                     println("Sauvegardé!")
+                                                    // TODO: Toast succès
                                                 } else {
                                                     println("Échec sauvegarde")
+                                                    // TODO: Toast erreur
                                                 }
                                             }
                                         } else {
@@ -311,7 +317,7 @@ fun EcranCamera(
     }
 }
 
-// moyenne des dernières détections
+// Lisse les émotions en moyennant les dernières détections
 private fun calculerEmotionsLissees(
     history: Map<Int, List<EmotionResult>>
 ): Map<Int, EmotionResult> {

@@ -23,6 +23,7 @@ import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.ui.screens.CategoryManagementScreen
 import com.ltb.sae501.auth.TokenManager
 import com.ltb.sae501.ml.ModelMetadataManager
+import com.ltb.sae501.preferences.CameraPreferences
 
 class MainActivity : ComponentActivity() {
 
@@ -38,7 +39,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Initialiser les préférences
         TokenManager.init(this)
+        CameraPreferences.init(this)
+
         dataSource = RemoteDataSource(this)
         detecteurEmotion = EmotionDetector(this)
         metadataManager = ModelMetadataManager(this)
@@ -56,6 +60,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
             var isAuthenticated by remember { mutableStateOf(TokenManager.isLoggedIn()) }
+            // État de la caméra géré au niveau de MainActivity
+            var isFrontCamera by remember { mutableStateOf(CameraPreferences.isFrontCamera()) }
 
             SAE501Theme(darkTheme = isDarkTheme) {
                 var currentScreen by remember { mutableStateOf(Screen.Home.route) }
@@ -81,7 +87,12 @@ class MainActivity : ComponentActivity() {
                             Screen.Camera.route -> CameraScreen(
                                 detecteurEmotion = detecteurEmotion,
                                 executeurEmotion = executeurEmotion,
-                                dataSource = dataSource
+                                dataSource = dataSource,
+                                isFrontCamera = isFrontCamera,
+                                onCameraFlipped = { newValue ->
+                                    isFrontCamera = newValue
+                                    CameraPreferences.setFrontCamera(newValue)
+                                }
                             )
                             Screen.History.route -> HistoryScreen(
                                 dataSource = dataSource
