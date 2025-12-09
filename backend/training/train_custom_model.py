@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
-"""
-Script d'entraînement de modèle personnalisé d'émotions
-Utilise TensorFlow pour entraîner un CNN sur les images utilisateur
-Convertit le modèle en TFLite pour déploiement Android
-"""
 
 import sys
 import json
 import numpy as np
 from PIL import Image
 import io
+import base64
 
 def create_custom_model():
-    """Crée l'architecture CNN personnalisée"""
     try:
         import tensorflow as tf
         from tensorflow.keras import layers, models
@@ -48,7 +43,6 @@ def create_custom_model():
         return None
 
 def load_training_data(data_json):
-    """Charge les données d'entraînement depuis JSON"""
     data = json.loads(data_json)
 
     labels_map = {
@@ -64,7 +58,10 @@ def load_training_data(data_json):
 
         for img_data in category.get('images', []):
             try:
-                img = Image.open(io.BytesIO(img_data['data']))
+                img_bytes = img_data['data']
+                if isinstance(img_bytes, str):
+                    img_bytes = base64.b64decode(img_bytes)
+                img = Image.open(io.BytesIO(img_bytes))
                 img = img.convert('L')
                 img = img.resize((48, 48))
                 img_array = np.array(img) / 255.0
@@ -76,28 +73,43 @@ def load_training_data(data_json):
     return np.array(images), np.array(labels)
 
 def train_model(model, x_train, y_train, x_val, y_val):
-    """Entraîne le modèle"""
     try:
         import tensorflow as tf
 
-        history = model.fit(
-            x_train, y_train,
-            validation_data=(x_val, y_val),
-            epochs=15,
-            batch_size=16,
-            callbacks=[
-                tf.keras.callbacks.EarlyStopping(patience=3, restore_best_weights=True)
-            ],
-            verbose=1
-        )
+        best_val_acc = 0
+        patience_counter = 0
+        best_weights = None
 
-        return history
+        for epoch in range(15):
+            history = model.fit(
+                x_train, y_train,
+                validation_data=(x_val, y_val),
+                epochs=1,
+                batch_size=16,
+                verbose=0
+            )
+            val_acc = history.history['val_accuracy'][0]
+            print(f"Epoch {epoch+1}/15 - val_accuracy: {val_acc:.4f}", flush=True)
+
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                patience_counter = 0
+                best_weights = model.get_weights()
+            else:
+                patience_counter += 1
+
+            if patience_counter >= 3:
+                print(f"Early stopping at epoch {epoch+1}", flush=True)
+                if best_weights is not None:
+                    model.set_weights(best_weights)
+                break
+
+        return model
     except ImportError:
         print("TensorFlow not available for training")
         return None
 
 def convert_to_tflite(model, output_path):
-    """Convertit le modèle en TFLite"""
     try:
         import tensorflow as tf
 
@@ -114,18 +126,19 @@ def convert_to_tflite(model, output_path):
         return b'\x00' * 1024
 
 def main():
-    """Point d'entrée principal"""
     if len(sys.argv) < 3:
         print("Usage: python train_custom_model.py <user_id> <data_json>")
         sys.exit(1)
 
     user_id = sys.argv[1]
-    data_json = sys.argv[2]
+    json_file_path = sys.argv[2]
 
     print(f"Training model for user: {user_id}")
 
     print("Loading training data...")
     try:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            data_json = f.read()
         images, labels = load_training_data(data_json)
         print(f"Loaded {len(images)} images")
     except Exception as e:
@@ -142,17 +155,19 @@ def main():
     print("Creating model...")
     model = create_custom_model()
 
+    val_accuracy = 0.85
     if model:
         print("Training model...")
-        history = train_model(model, x_train, y_train, x_val, y_val)
+        trained_model = train_model(model, x_train, y_train, x_val, y_val)
 
-        if history:
-            val_accuracy = max(history.history['val_accuracy'])
+        if trained_model:
+            _, val_accuracy = trained_model.evaluate(x_val, y_val, verbose=0)
             print(f"Training complete. Validation accuracy: {val_accuracy:.4f}")
+            model = trained_model
         else:
-            val_accuracy = 0.85
+            print("Training failed, using mock accuracy")
     else:
-        val_accuracy = 0.85
+        print("Model creation failed, using mock accuracy")
 
     output_path = f"custom_model_{user_id}.tflite"
     print(f"Converting to TFLite: {output_path}")

@@ -1,5 +1,7 @@
 package com.ltb.sae501.service
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.ltb.sae501.config.TrainingConfigurationProperties
 import com.ltb.sae501.dto.CategoryImagesDto
 import com.ltb.sae501.dto.ImageDataDto
 import com.ltb.sae501.dto.TrainingImagesResponse
@@ -8,9 +10,14 @@ import com.ltb.sae501.entity.CustomModel
 import com.ltb.sae501.repository.CustomModelRepository
 import com.ltb.sae501.repository.TrainingImageRepository
 import com.ltb.sae501.repository.UserRepository
+import com.ltb.sae501.util.PythonProcessExecutor
+import com.ltb.sae501.util.TrainingDataSerializer
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.io.File
+import java.nio.file.Paths
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -19,8 +26,12 @@ class TrainingService(
     private val categoryService: CategoryService,
     private val trainingImageRepository: TrainingImageRepository,
     private val customModelRepository: CustomModelRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val trainingConfig: TrainingConfigurationProperties,
+    private val pythonExecutor: PythonProcessExecutor
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val objectMapper = jacksonObjectMapper()
     private val trainingStatusMap = ConcurrentHashMap<String, TrainingStatusResponse>()
 
     fun getAllTrainingImagesForUser(userId: String): TrainingImagesResponse {
@@ -123,18 +134,101 @@ class TrainingService(
     }
 
     private fun executeTraining(userId: String): ByteArray {
-        updateStatus(userId, "training", 0.2f, 2, 15, 0.0f, null)
+        updateStatus(userId, "preparing", 0.05f, 0, 15, 0.0f, null)
 
-        Thread.sleep(1000)
-        updateStatus(userId, "training", 0.5f, 7, 15, 0.75f, null)
+        val (available, version) = pythonExecutor.checkPythonAvailability()
+        if (!available) {
+            throw IllegalStateException("Python non trouvé : ${trainingConfig.python.executable}")
+        }
+        logger.info("Python version: $version")
 
-        Thread.sleep(1000)
-        updateStatus(userId, "training", 0.8f, 12, 15, 0.82f, null)
+        val imagesByCategory = categoryService.getAllTrainingImagesForUser(userId)
+        val totalImages = imagesByCategory.values.sumOf { it.size }
 
-        Thread.sleep(1000)
+        if (totalImages < trainingConfig.minImagesPerCategory * 7) {
+            throw IllegalArgumentException(
+                "Données insuffisantes: $totalImages images (minimum ${trainingConfig.minImagesPerCategory} par catégorie)"
+            )
+        }
+        logger.info("$totalImages images chargées")
 
-        return ByteArray(1024)
+        updateStatus(userId, "preparing_data", 0.1f, 0, 15, 0.0f, null)
+        val jsonFile = TrainingDataSerializer.serializeToJsonFile(imagesByCategory)
+
+        try {
+            val args = listOf(userId, jsonFile.absolutePath)
+
+            updateStatus(userId, "training", 0.15f, 1, 15, 0.0f, null)
+            val result = pythonExecutor.execute(
+                scriptName = trainingConfig.python.scriptName,
+                args = args,
+                timeoutMs = trainingConfig.python.timeout,
+                progressCallback = { line -> parseProgressUpdate(userId, line) }
+            )
+
+            if (result.timedOut) {
+                throw IllegalStateException("Training timeout après ${trainingConfig.python.timeout}ms")
+            }
+
+            if (result.exitCode != 0) {
+                logger.error("Training échoué : ${result.stderr}")
+                throw IllegalStateException("Training échoué : ${result.stderr.take(200)}")
+            }
+
+            val jsonOutput = result.stdout.lines().lastOrNull { it.trim().startsWith("{") }
+                ?: throw IllegalStateException("Pas de JSON dans output Python")
+
+            val pythonResult = objectMapper.readValue(jsonOutput, PythonTrainingResult::class.java)
+            if (!pythonResult.success) {
+                throw IllegalStateException("Python a reporté un échec")
+            }
+
+            logger.info("Training terminé : accuracy=${pythonResult.accuracy}")
+
+            updateStatus(userId, "saving_model", 0.95f, 15, 15, pythonResult.accuracy.toFloat(), null)
+            val modelFile = File(trainingConfig.python.scriptDir, pythonResult.modelPath)
+
+            if (!modelFile.exists()) {
+                throw IllegalStateException("Fichier modèle non trouvé : ${modelFile.absolutePath}")
+            }
+
+            val modelBytes = modelFile.readBytes()
+
+            modelFile.delete()
+            logger.info("Fichier temporaire supprimé")
+
+            return modelBytes
+
+        } finally {
+            jsonFile.delete()
+        }
     }
+
+    private fun parseProgressUpdate(userId: String, line: String) {
+        try {
+            val epochRegex = """Epoch\s+(\d+)/(\d+)""".toRegex()
+            val epochMatch = epochRegex.find(line) ?: return
+
+            val current = epochMatch.groupValues[1].toInt()
+            val total = epochMatch.groupValues[2].toInt()
+            val progress = 0.15f + (current.toFloat() / total * 0.8f)
+
+            val accRegex = """val_accuracy:\s+([\d.]+)""".toRegex()
+            val accuracy = accRegex.find(line)?.groupValues?.get(1)?.toFloat() ?: 0.0f
+
+            updateStatus(userId, "training", progress, current, total, accuracy, null)
+        } catch (e: Exception) {
+        }
+    }
+
+    data class PythonTrainingResult(
+        val success: Boolean,
+        val accuracy: Double,
+        @com.fasterxml.jackson.annotation.JsonProperty("model_path")
+        val modelPath: String,
+        @com.fasterxml.jackson.annotation.JsonProperty("model_size")
+        val modelSize: Int
+    )
 
     @Transactional
     private fun saveCustomModel(userId: String, modelData: ByteArray) {

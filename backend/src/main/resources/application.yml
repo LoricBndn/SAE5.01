@@ -34,4 +34,13 @@ file:
 
 jwt:
   secret: SAE501SecretKeyForJWTTokenGenerationAndValidation2025
-  expiration: 86400000 # 24 hours in milliseconds
+  expiration: 86400000
+
+training:
+  python:
+    executable: python
+    timeout: 1800000
+    script-dir: ./training
+    script-name: train_custom_model.py
+  max-images: 10000
+  min-images-per-category: 5
