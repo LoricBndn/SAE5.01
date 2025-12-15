@@ -1,0 +1,63 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build and Test Spring Boot Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x ../gradlew
+
+    - name: Build backend
+      run: ../gradlew :backend:build -x test --stacktrace
+
+    - name: Run tests
+      run: ../gradlew :backend:test --stacktrace
+
+    - name: OWASP Dependency Check
+      run: |
+        ../gradlew :backend:dependencyCheckAnalyze --stacktrace || true
+      continue-on-error: true
+
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-jar
+        path: backend/build/libs/*.jar
+        retention-days: 30
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-test-results
+        path: 'backend/build/test-results/test/*.xml'
+        retention-days: 7
+
+    - name: Upload dependency check report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-dependency-check-report
+        path: 'backend/build/reports/dependency-check-report.html'
+        retention-days: 30

@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version "1.9.21"
     kotlin("plugin.spring") version "1.9.21"
     kotlin("plugin.jpa") version "1.9.21"
+    id("org.owasp.dependencycheck") version "9.0.9"
 }
 
 group = "com.ltb"
