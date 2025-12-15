@@ -38,17 +38,11 @@ jobs:
         key: ${{ runner.os }}-sonar
         restore-keys: ${{ runner.os }}-sonar
 
-    - name: Build and analyze Android app
+    - name: Build Android app
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
-        ./gradlew build --stacktrace
-
-    - name: Build backend
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: |
-        ./gradlew :backend:build -x test --stacktrace
+        ./gradlew assembleDebug --stacktrace
 
     - name: SonarCloud Scan
       env:
@@ -59,4 +53,6 @@ jobs:
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
           -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.sources=app/src/main/java \
+          -Dsonar.tests=app/src/test/java,app/src/androidTest/java \
           --stacktrace

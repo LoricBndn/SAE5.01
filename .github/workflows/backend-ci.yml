@@ -26,17 +26,17 @@ jobs:
         cache: gradle
 
     - name: Grant execute permission for gradlew
-      run: chmod +x ../gradlew
+      run: chmod +x gradlew
 
     - name: Build backend
-      run: ../gradlew :backend:build -x test --stacktrace
+      run: ./gradlew build -x test --stacktrace
 
     - name: Run tests
-      run: ../gradlew :backend:test --stacktrace
+      run: ./gradlew test --stacktrace
 
     - name: OWASP Dependency Check
       run: |
-        ../gradlew :backend:dependencyCheckAnalyze --stacktrace || true
+        ./gradlew dependencyCheckAnalyze --stacktrace || true
       continue-on-error: true
 
     - name: Upload JAR artifact
