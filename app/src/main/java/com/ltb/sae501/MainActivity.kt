@@ -115,9 +115,7 @@ class MainActivity : ComponentActivity() {
                                     CategoryManagementScreen(
                                         dataSource = dataSource,
                                         metadataManager = metadataManager,
-                                        onLogout = {
-                                            dataSource.logout()
-                                            isAuthenticated = false
+                                        onNavigateBack = {
                                             currentScreen = Screen.Settings.route
                                         },
                                         onNavigateToTraining = {

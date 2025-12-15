@@ -14,8 +14,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ltb.sae501.data.models.EmotionCategory
 import com.ltb.sae501.network.RemoteDataSource
+import com.ltb.sae501.ui.theme.AccentDelete
+import com.ltb.sae501.ui.theme.AccentPink
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +39,7 @@ import kotlinx.coroutines.launch
 fun CategoryManagementScreen(
     dataSource: RemoteDataSource,
     metadataManager: com.ltb.sae501.ml.ModelMetadataManager,
-    onLogout: () -> Unit = {},
+    onNavigateBack: () -> Unit = {},
     onNavigateToTraining: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -71,19 +74,19 @@ fun CategoryManagementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestion des Émotions") },
-                actions = {
-                    IconButton(onClick = onLogout) {
+                title = { Text("Gestion de l'IA", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "Déconnexion",
-                            tint = Color.White
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Retour"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF2A2A2A),
-                    titleContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -93,17 +96,18 @@ fun CategoryManagementScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFFF18E06))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
             hasError -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF1E1E1E))
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
@@ -118,30 +122,31 @@ fun CategoryManagementScreen(
                         )
                         Text(
                             text = "Impossible de se connecter au serveur",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Vérifiez que le serveur backend est démarré et accessible.",
-                            color = Color(0xFFB0B0B0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Text(
                             text = "Sur un appareil physique, assurez-vous d'être sur le même réseau WiFi que le serveur.",
-                            color = Color(0xFFB0B0B0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Button(
                             onClick = { retryTrigger++ },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF18E06)
+                                containerColor = MaterialTheme.colorScheme.primary
                             ),
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Réessayer")
+                            Text("Réessayer", color = Color.White)
                         }
                     }
                 }
@@ -150,7 +155,7 @@ fun CategoryManagementScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF1E1E1E))
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(paddingValues)
                 ) {
                     // Liste des catégories
@@ -162,19 +167,37 @@ fun CategoryManagementScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
-                                shape = RoundedCornerShape(12.dp)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                shape = RoundedCornerShape(14.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Text(
-                                        text = "Modèle Personnalisé",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .background(Color(0xFFF0F0F0), RoundedCornerShape(12.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.SmartToy,
+                                                contentDescription = null,
+                                                tint = AccentPink,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = "Modèle Personnalisé",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
 
                                     if (modelMetadata != null) {
                                         Row(
@@ -191,41 +214,43 @@ fun CategoryManagementScreen(
                                                 )
                                                 Text(
                                                     "Dernière mise à jour: ${java.text.SimpleDateFormat("dd/MM/yyyy").format(java.util.Date(modelMetadata!!.trainingDate))}",
-                                                    color = Color(0xFFB0B0B0),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     fontSize = 12.sp
                                                 )
                                             }
                                         }
                                         Button(
                                             onClick = onNavigateToTraining,
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)),
-                                            modifier = Modifier.fillMaxWidth()
+                                            colors = ButtonDefaults.buttonColors(containerColor = AccentPink),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(10.dp)
                                         ) {
-                                            Text("Réentraîner le Modèle")
+                                            Text("Réentraîner le Modèle", color = Color.White)
                                         }
                                     } else {
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text("⚠", fontSize = 20.sp, color = Color(0xFFF18E06))
+                                            Text("⚠", fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
                                             Text(
                                                 "Aucun modèle personnalisé",
-                                                color = Color(0xFFF18E06),
+                                                color = MaterialTheme.colorScheme.primary,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
                                         Text(
                                             "Uploadez au moins 10 images par catégorie puis entraînez votre modèle",
-                                            color = Color(0xFFB0B0B0),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 12.sp
                                         )
                                         Button(
                                             onClick = onNavigateToTraining,
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF18E06)),
-                                            modifier = Modifier.fillMaxWidth()
+                                            colors = ButtonDefaults.buttonColors(containerColor = AccentPink),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(10.dp)
                                         ) {
-                                            Text("Entraîner le Modèle")
+                                            Text("Entraîner le Modèle", color = Color.White)
                                         }
                                     }
                                 }
@@ -300,9 +325,9 @@ fun CategoryCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -320,29 +345,29 @@ fun CategoryCard(
                     // Emoji avec couleur de fond
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
+                            .size(48.dp)
                             .background(
-                                Color(android.graphics.Color.parseColor(category.color)).copy(alpha = 0.3f),
-                                CircleShape
+                                Color(android.graphics.Color.parseColor(category.color)).copy(alpha = 0.2f),
+                                RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = category.emoji,
-                            fontSize = 28.sp
+                            fontSize = 24.sp
                         )
                     }
 
                     Column {
                         Text(
                             text = category.name,
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = category.description,
-                            color = Color(0xFFB0B0B0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     }
@@ -350,7 +375,7 @@ fun CategoryCard(
 
                 // Badge avec le nombre d'images
                 Surface(
-                    color = Color(0xFFF18E06),
+                    color = MaterialTheme.colorScheme.primary,
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text(
@@ -377,7 +402,7 @@ fun CategoryCard(
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, Color(0xFF3A3A3A), RoundedCornerShape(8.dp)),
+                                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
                                 contentScale = ContentScale.Crop
                             )
 
@@ -388,7 +413,7 @@ fun CategoryCard(
                                     .size(24.dp)
                                     .align(Alignment.TopEnd)
                                     .offset(x = 4.dp, y = (-4).dp)
-                                    .background(Color.Red.copy(alpha = 0.8f), CircleShape)
+                                    .background(AccentDelete.copy(alpha = 0.9f), CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
@@ -406,15 +431,15 @@ fun CategoryCard(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .border(2.dp, Color(0xFFF18E06), RoundedCornerShape(8.dp))
-                                .background(Color(0xFF3A3A3A))
+                                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                                 .clickable(onClick = onClick),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Ajouter",
-                                tint = Color(0xFFF18E06),
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(30.dp)
                             )
                         }
@@ -426,9 +451,9 @@ fun CategoryCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(80.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(2.dp, Color(0xFFF18E06), RoundedCornerShape(8.dp))
-                        .background(Color(0xFF3A3A3A))
+                        .clip(RoundedCornerShape(10.dp))
+                        .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         .clickable(onClick = onClick),
                     contentAlignment = Alignment.Center
                 ) {
@@ -439,12 +464,12 @@ fun CategoryCard(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Ajouter",
-                            tint = Color(0xFFF18E06),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(30.dp)
                         )
                         Text(
                             text = "Ajouter des images",
-                            color = Color(0xFFB0B0B0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     }
@@ -483,25 +508,28 @@ fun AddImageDialog(
         },
         text = {
             Column {
-                Text("Ajoutez une image d'entraînement pour l'émotion ${category.name}.")
+                Text(
+                    "Ajoutez une image d'entraînement pour l'émotion ${category.name}.",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Cette image sera utilisée pour améliorer la reconnaissance de cette émotion.",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (isUploading) {
                     Spacer(modifier = Modifier.height(16.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFFF18E06)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Upload en cours...",
                         fontSize = 12.sp,
-                        color = Color(0xFFF18E06)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -510,7 +538,7 @@ fun AddImageDialog(
                     Text(
                         text = uploadError,
                         fontSize = 12.sp,
-                        color = Color.Red,
+                        color = AccentDelete,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -521,10 +549,11 @@ fun AddImageDialog(
                 onClick = { imagePickerLauncher.launch("image/*") },
                 enabled = !isUploading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF18E06)
-                )
+                    containerColor = AccentPink
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Choisir une image")
+                Text("Choisir une image", color = Color.White)
             }
         },
         dismissButton = {
@@ -532,8 +561,11 @@ fun AddImageDialog(
                 onClick = onDismiss,
                 enabled = !isUploading
             ) {
-                Text("Annuler")
+                Text("Annuler", color = MaterialTheme.colorScheme.onSurface)
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface
     )
 }
