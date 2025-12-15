@@ -53,6 +53,5 @@ jobs:
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.sources=app/src/main/java \
-          -Dsonar.tests=app/src/test/java,app/src/androidTest/java \
+          -Dsonar.gradle.skipCompile=true \
           --stacktrace

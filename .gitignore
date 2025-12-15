@@ -19,6 +19,3 @@ nul
 
 # Kotlin error logs
 .kotlin/
-
-# Claude settings
-.claude/
