@@ -9,13 +9,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import com.google.mlkit.vision.face.Face
+import com.ltb.sae501.ml.CombinedEmotionResult
 import kotlin.math.max
 
 // Dessine les rectangles et émotions sur la caméra
 @Composable
 fun FaceOverlay(
     faces: List<Face>,
-    emotions: Map<Int, EmotionResult>,
+    emotions: Map<Int, CombinedEmotionResult>,
     imageWidth: Int,
     imageHeight: Int,
     isFrontCamera: Boolean = true
@@ -72,7 +73,7 @@ fun FaceOverlay(
     }
 }
 
-private fun creerTexte(emotion: EmotionResult?): String {
+private fun creerTexte(emotion: CombinedEmotionResult?): String {
     if (emotion == null) {
         return "Analyse..."
     }

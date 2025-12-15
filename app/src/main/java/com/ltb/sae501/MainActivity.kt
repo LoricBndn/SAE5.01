@@ -24,13 +24,14 @@ import com.ltb.sae501.ui.screens.CategoryManagementScreen
 import com.ltb.sae501.auth.TokenManager
 import com.ltb.sae501.ml.ModelMetadataManager
 import com.ltb.sae501.preferences.CameraPreferences
+import com.ltb.sae501.ml.DualModelDetector
 
 class MainActivity : ComponentActivity() {
 
     private val codePermission = 100
     private val executeurCamera = Executors.newSingleThreadExecutor()
     private val executeurEmotion = Executors.newSingleThreadExecutor()
-    private lateinit var detecteurEmotion: EmotionDetector
+    private lateinit var detecteurEmotion: DualModelDetector
 
     private lateinit var dataSource: RemoteDataSource
     private lateinit var metadataManager: ModelMetadataManager
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
         CameraPreferences.init(this)
 
         dataSource = RemoteDataSource(this)
-        detecteurEmotion = EmotionDetector(this)
+        detecteurEmotion = DualModelDetector(this)
         metadataManager = ModelMetadataManager(this)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
