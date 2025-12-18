@@ -53,8 +53,9 @@ class ModelMetadataManager(private val context: Context) {
         return try {
             val modelFile = File(modelsDir, "custom_emotion_model.tflite")
             val deleted = modelFile.delete()
-            metadataFile.delete()
+            val deletedStatus = metadataFile.delete()
             deleted
+            deletedStatus
         } catch (e: Exception) {
             e.printStackTrace()
             false
