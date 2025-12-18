@@ -38,6 +38,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
+import android.os.Environment
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -248,7 +249,7 @@ fun EcranCamera(
                     onClick = {
                         imageCapture?.let { capture ->
                             val photoFile = File(
-                                context.externalMediaDirs.firstOrNull(),
+                                context.filesDir,
                                 SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
                                     .format(System.currentTimeMillis()) + ".jpg"
                             )
