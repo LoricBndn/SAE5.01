@@ -24,15 +24,15 @@ android {
         // API Base URL Configuration
         // Default: Emulator (10.0.2.2 = host machine's localhost)
         // To override for physical device: Add to local.properties:
-        //   api.base.url=http://YOUR_COMPUTER_IP:8080/api/
-        // Example: api.base.url=http://192.168.1.100:8080/api/
+        //   api.base.url=http://YOUR_COMPUTER_IP:8081/api/
+        // Example: api.base.url=http://192.168.1.100:8081/api/
         val localPropertiesFile = File(rootProject.projectDir, "local.properties")
         val apiBaseUrl = if (localPropertiesFile.exists()) {
             val properties = Properties()
             properties.load(FileInputStream(localPropertiesFile))
-            properties.getProperty("api.base.url", "http://10.0.2.2:8080/api/")
+            properties.getProperty("api.base.url", "http://192.168.1.42:8081/api/")
         } else {
-            "http://10.0.2.2:8080/api/"
+            "http://192.168.1.42:8081/api/"
         }
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
