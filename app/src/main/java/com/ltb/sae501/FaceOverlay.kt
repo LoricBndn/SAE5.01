@@ -19,7 +19,8 @@ fun FaceOverlay(
     emotions: Map<Int, CombinedEmotionResult>,
     imageWidth: Int,
     imageHeight: Int,
-    isFrontCamera: Boolean = true
+    isFrontCamera: Boolean = true,
+    showPercentage: Boolean = true
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (faces.isEmpty()) return@Canvas
@@ -43,7 +44,6 @@ fun FaceOverlay(
             var centreX = (boite.left + boite.width() / 2f) * scale + offsetX
             val centreY = (boite.top + boite.height() / 2f) * scale + offsetY
 
-            // miroir pour caméra frontale
             if (isFrontCamera) {
                 centreX = size.width - centreX
             }
@@ -58,7 +58,7 @@ fun FaceOverlay(
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
             )
 
-            val texte = creerTexte(emotions[index])
+            val texte = creerTexte(emotions[index], showPercentage)
 
             drawContext.canvas.nativeCanvas.apply {
                 val paint = Paint().apply {
@@ -73,15 +73,19 @@ fun FaceOverlay(
     }
 }
 
-private fun creerTexte(emotion: CombinedEmotionResult?): String {
+private fun creerTexte(emotion: CombinedEmotionResult?, showPercentage: Boolean): String {
     if (emotion == null) {
         return "Analyse..."
     }
 
     val emotionFrancais = traduireEmotion(emotion.emotion)
-    val pourcentage = (emotion.confidence * 100).toInt()
-
-    return "$emotionFrancais $pourcentage%"
+    
+    return if (showPercentage) {
+        val pourcentage = (emotion.confidence * 100).toInt()
+        "$emotionFrancais $pourcentage%"
+    } else {
+        emotionFrancais
+    }
 }
 
 private fun traduireEmotion(emotion: String): String {

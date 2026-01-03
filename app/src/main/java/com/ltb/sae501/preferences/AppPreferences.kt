@@ -2,6 +2,9 @@ package com.ltb.sae501.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Gestionnaire de préférences pour les paramètres de l'application
@@ -13,13 +16,18 @@ object AppPreferences {
     private const val KEY_DARK_MODE_ENABLED = "is_dark_mode_enabled"
 
     private lateinit var prefs: SharedPreferences
+    
+    private val _isPercentageShownFlow = MutableStateFlow(true)
+    val isPercentageShownFlow: StateFlow<Boolean> = _isPercentageShownFlow.asStateFlow()
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        _isPercentageShownFlow.value = isPercentageShown()
     }
 
     fun setPercentageShown(value: Boolean) {
         prefs.edit().putBoolean(KEY_PERCENTAGE_SHOWN, value).apply()
+        _isPercentageShownFlow.value = value
     }
 
     fun isPercentageShown(): Boolean {

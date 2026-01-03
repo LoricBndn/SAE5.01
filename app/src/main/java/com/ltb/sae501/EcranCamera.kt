@@ -63,6 +63,8 @@ fun EcranCamera(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
 
     var enCoursAnalyse by remember { mutableStateOf(false) }
+    
+    val showPercentage by com.ltb.sae501.preferences.AppPreferences.isPercentageShownFlow.collectAsState()
 
     var frameCounter by remember { mutableIntStateOf(0) }
     val analyseFrequency = 3
@@ -222,7 +224,8 @@ fun EcranCamera(
             emotions = emotions,
             imageWidth = largeurImage,
             imageHeight = hauteurImage,
-            isFrontCamera = isFrontCamera
+            isFrontCamera = isFrontCamera,
+            showPercentage = showPercentage
         )
 
         Box(
