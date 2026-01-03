@@ -28,7 +28,7 @@ class RecognitionService(
 
         val recognition = RecognitionResult(
             id = UUID.randomUUID().toString(),
-            timestamp = System.currentTimeMillis(),
+            detectedAt = System.currentTimeMillis(),
             imageData = imageData,
             user = user
         )
@@ -50,7 +50,7 @@ class RecognitionService(
     }
 
     fun getAllRecognitions(): List<RecognitionResult> {
-        return recognitionResultRepository.findAllByOrderByTimestampDesc()
+        return recognitionResultRepository.findAllByOrderByDetectedAtDesc()
     }
 
     fun getRecognitionById(id: String): RecognitionResult? {
@@ -58,7 +58,7 @@ class RecognitionService(
     }
 
     fun getRecognitionsByUser(userId: String): List<RecognitionResult> {
-        return recognitionResultRepository.findByUserIdOrderByTimestampDesc(userId)
+        return recognitionResultRepository.findByUserIdOrderByDetectedAtDesc(userId)
     }
 
     @Transactional

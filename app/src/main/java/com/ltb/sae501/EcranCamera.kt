@@ -69,7 +69,13 @@ fun EcranCamera(
 
     val previewView = remember { PreviewView(context) }
 
-    // Réinitialiser l'état quand on change de caméra
+    LaunchedEffect(Unit) {
+        dataSource.getCategories().collect { cats ->
+            categories = cats
+            Log.d("EcranCamera", "Catégories chargées: ${cats.size} catégories")
+        }
+    }
+
     LaunchedEffect(isFrontCamera) {
         frameCounter = 0
         emotionHistory.clear()
@@ -209,7 +215,6 @@ fun EcranCamera(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Overlay pour afficher les boîtes englobantes et les résultats d'émotion
         FaceOverlay(
             faces = visages,
             emotions = emotions,
@@ -261,7 +266,6 @@ fun EcranCamera(
                                 object : ImageCapture.OnImageSavedCallback {
                                     override fun onError(exc: ImageCaptureException) {
                                         Log.e("EcranCamera", "Erreur capture photo: ${exc.message}", exc)
-                                        // TODO: Afficher un Toast d'erreur
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
@@ -269,25 +273,36 @@ fun EcranCamera(
 
                                         val uri = output.savedUri ?: Uri.fromFile(photoFile)
 
-                                        val emotionsToSave = emotions.values.map { emotionResult ->
-                                            RecognizedEmotion(
-                                                emotion = emotionResult.emotion,
-                                                confidence = emotionResult.confidence
-                                            )
+                                        val emotionsToSave = emotions.values.mapNotNull { emotionResult ->
+                                            val category = categories.find { cat ->
+                                                cat.nameEn.equals(emotionResult.emotion, ignoreCase = true) ||
+                                                cat.name.equals(emotionResult.emotion, ignoreCase = true)
+                                            }
+                                            
+                                            if (category != null) {
+                                                RecognizedEmotion(
+                                                    id = java.util.UUID.randomUUID().toString(),
+                                                    recognitionId = "",
+                                                    emotionId = category.id,
+                                                    confidence = emotionResult.confidence,
+                                                    detectedAt = System.currentTimeMillis()
+                                                )
+                                            } else {
+                                                Log.w("EcranCamera", "Catégorie introuvable pour: ${emotionResult.emotion}")
+                                                null
+                                            }
                                         }.toList()
 
                                         if (emotionsToSave.isNotEmpty()) {
                                             coroutineScope.launch {
                                                 val success = dataSource.saveRecognition(
                                                     imageUri = uri,
-                                                    recognizedEmotions = emotionsToSave
+                                                    emotions = emotionsToSave
                                                 )
                                                 if (success) {
-                                                    Log.d("EcranCamera", "Sauvegardé!")
-                                                    // TODO: Toast succès
+                                                    Log.d("EcranCamera", "Sauvegardé localement!")
                                                 } else {
-                                                    Log.e("EcranCamera", "Échec sauvegarde")
-                                                    // TODO: Toast erreur
+                                                    Log.e("EcranCamera", "Échec sauvegarde locale")
                                                 }
                                             }
                                         } else {
@@ -319,7 +334,6 @@ fun EcranCamera(
     }
 }
 
-// Lisse les émotions en moyennant les dernières détections
 private fun calculerEmotionsLissees(
     history: Map<Int, List<CombinedEmotionResult>>
 ): Map<Int, CombinedEmotionResult> {

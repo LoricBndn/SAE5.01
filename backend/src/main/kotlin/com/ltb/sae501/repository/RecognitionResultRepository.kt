@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface RecognitionResultRepository : JpaRepository<RecognitionResult, String> {
-    fun findAllByOrderByTimestampDesc(): List<RecognitionResult>
+    fun findAllByOrderByDetectedAtDesc(): List<RecognitionResult>
 
-    @Query("SELECT r FROM RecognitionResult r WHERE r.user.id = :userId ORDER BY r.timestamp DESC")
-    fun findByUserIdOrderByTimestampDesc(@Param("userId") userId: String): List<RecognitionResult>
+    @Query("SELECT r FROM RecognitionResult r WHERE r.user.id = :userId ORDER BY r.detectedAt DESC")
+    fun findByUserIdOrderByDetectedAtDesc(@Param("userId") userId: String): List<RecognitionResult>
 }

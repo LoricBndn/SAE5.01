@@ -24,7 +24,6 @@ import java.io.File
 class RemoteDataSource(private val context: Context) {
     private val apiService = RetrofitClient.apiService
 
-    // Authentication methods
     suspend fun register(username: String, email: String, password: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val request = RegisterRequest(username, password, email)
@@ -34,7 +33,7 @@ class RemoteDataSource(private val context: Context) {
                     val token = authResponse.token
                     val userId = authResponse.userId
                     if (token != null && userId != null) {
-                        TokenManager.saveToken(token, userId)
+                        TokenManager.saveToken(token, userId, username)
                         return@withContext Result.success(true)
                     }
                 }
@@ -56,7 +55,7 @@ class RemoteDataSource(private val context: Context) {
                     val token = authResponse.token
                     val userId = authResponse.userId
                     if (token != null && userId != null) {
-                        TokenManager.saveToken(token, userId)
+                        TokenManager.saveToken(token, userId, username)
                         return@withContext Result.success(true)
                     }
                 }
@@ -89,8 +88,14 @@ class RemoteDataSource(private val context: Context) {
 
             imageFile.delete()
 
-            response.isSuccessful
+            if (response.isSuccessful) {
+                true
+            } else {
+                val errorBody = response.errorBody()?.string()
+                false
+            }
         } catch (e: Exception) {
+            e.printStackTrace()
             e.printStackTrace()
             false
         }
@@ -104,15 +109,18 @@ class RemoteDataSource(private val context: Context) {
                     val recognitions = response.body()?.map { dto ->
                         RecognitionResult(
                             id = dto.id,
-                            timestamp = dto.timestamp,
-                            imageStorageUrl = buildImageUrl(dto.imageUrl),
+                            userId = dto.userId,
+                            imageStorageUrl = buildImageUrl(dto.imageStorageUrl),
+                            detectedAt = dto.detectedAt,
                             recognizedEmotions = dto.recognizedEmotions.map { emotionDto ->
                                 RecognizedEmotion(
-                                    emotion = emotionDto.emotion,
-                                    confidence = emotionDto.confidence
+                                    id = emotionDto.id ?: "",
+                                    recognitionId = dto.id,
+                                    emotionId = emotionDto.emotionId,
+                                    confidence = emotionDto.confidence,
+                                    detectedAt = dto.detectedAt
                                 )
-                            },
-                            userId = dto.userId
+                            }
                         )
                     } ?: emptyList()
 
@@ -134,7 +142,7 @@ class RemoteDataSource(private val context: Context) {
             try {
                 val response = apiService.getAllCategories()
                 if (response.isSuccessful) {
-                    consecutiveFailures = 0 // Reset counter on success
+                    consecutiveFailures = 0
                     val categories = response.body()?.map { dto ->
                         EmotionCategory(
                             id = dto.id,
@@ -144,9 +152,9 @@ class RemoteDataSource(private val context: Context) {
                             color = dto.color,
                             description = dto.description,
                             imageCount = dto.imageCount,
-                            trainingImages = dto.trainingImages.map { buildImageUrl(it) },
                             createdAt = dto.createdAt,
-                            lastUpdated = dto.lastUpdated
+                            updatedAt = dto.updatedAt,
+                            trainingImages = dto.trainingImages
                         )
                     } ?: emptyList()
 
@@ -154,7 +162,6 @@ class RemoteDataSource(private val context: Context) {
                 } else {
                     consecutiveFailures++
                     if (consecutiveFailures >= maxFailures) {
-                        // Emit empty list to signal error state
                         emit(emptyList())
                         break
                     }
@@ -163,7 +170,6 @@ class RemoteDataSource(private val context: Context) {
                 e.printStackTrace()
                 consecutiveFailures++
                 if (consecutiveFailures >= maxFailures) {
-                    // Emit empty list and stop polling after multiple failures
                     emit(emptyList())
                     break
                 }
@@ -226,18 +232,15 @@ class RemoteDataSource(private val context: Context) {
 
     private fun buildEmotionsJson(emotions: List<RecognizedEmotion>): String {
         val emotionStrings = emotions.joinToString(",") { emotion ->
-            """{"emotion":"${emotion.emotion}","confidence":${emotion.confidence}}"""
+            """{"emotionId":"${emotion.emotionId}","confidence":${emotion.confidence}}"""
         }
         return "[$emotionStrings]"
     }
 
     private fun buildImageUrl(relativeUrl: String): String {
-        // If URL is already absolute, return as is
         if (relativeUrl.startsWith("http")) {
             return relativeUrl
         }
-
-        // Otherwise, build full URL using BuildConfig
         val baseUrl = com.ltb.sae501.BuildConfig.API_BASE_URL
             .removeSuffix("/api/")
             .removeSuffix("/")

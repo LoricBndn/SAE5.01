@@ -36,7 +36,7 @@ class RecognitionController(
 
             val response = RecognitionResponse(
                 id = recognition.id,
-                timestamp = recognition.timestamp,
+                detectedAt = recognition.detectedAt,
                 imageUrl = "/api/files/recognition/${recognition.id}",
                 recognizedEmotions = emotionDtos,
                 userId = recognition.user?.id
@@ -56,7 +56,7 @@ class RecognitionController(
         val responses = recognitions.map { recognition ->
             RecognitionResponse(
                 id = recognition.id,
-                timestamp = recognition.timestamp,
+                detectedAt = recognition.detectedAt,
                 imageUrl = "/api/files/recognition/${recognition.id}",
                 recognizedEmotions = recognition.recognizedEmotions.map {
                     RecognizedEmotionDto(it.emotion, it.confidence)
@@ -83,7 +83,7 @@ class RecognitionController(
 
         val response = RecognitionResponse(
             id = recognition.id,
-            timestamp = recognition.timestamp,
+            detectedAt = recognition.detectedAt,
             imageUrl = "/api/files/recognition/${recognition.id}",
             recognizedEmotions = recognition.recognizedEmotions.map {
                 RecognizedEmotionDto(it.emotion, it.confidence)
