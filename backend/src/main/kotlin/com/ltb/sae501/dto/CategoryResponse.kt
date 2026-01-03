@@ -8,7 +8,7 @@ data class CategoryResponse(
     val color: String,
     val description: String,
     val imageCount: Int,
-    val trainingImages: List<String>,
     val createdAt: Long,
-    val lastUpdated: Long
+    val updatedAt: Long,
+    val trainingImages: List<String>
 )

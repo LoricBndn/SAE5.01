@@ -6,16 +6,20 @@ import jakarta.persistence.*
 @Table(name = "recognized_emotions")
 data class RecognizedEmotion(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+    @Column(length = 255)
+    var id: String = "",
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recognition_id", nullable = false)
-    var recognitionResult: RecognitionResult? = null,
+    var recognitionResult: RecognitionResult = RecognitionResult(),
 
-    @Column(nullable = false, length = 50)
-    var emotion: String = "",
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "emotion_id", nullable = false)
+    var emotionCategory: EmotionCategory = EmotionCategory(),
 
     @Column(nullable = false)
-    var confidence: Float = 0.0f
+    var confidence: Float = 0.0f,
+
+    @Column(nullable = false)
+    var detectedAt: Long = System.currentTimeMillis()
 )

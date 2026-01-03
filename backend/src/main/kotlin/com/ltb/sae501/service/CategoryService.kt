@@ -2,9 +2,11 @@ package com.ltb.sae501.service
 
 import com.ltb.sae501.entity.EmotionCategory
 import com.ltb.sae501.entity.TrainingImage
+import com.ltb.sae501.entity.CustomModel
 import com.ltb.sae501.repository.EmotionCategoryRepository
 import com.ltb.sae501.repository.TrainingImageRepository
 import com.ltb.sae501.repository.UserRepository
+import com.ltb.sae501.repository.CustomModelRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
@@ -13,16 +15,22 @@ import java.util.*
 class CategoryService(
     private val categoryRepository: EmotionCategoryRepository,
     private val trainingImageRepository: TrainingImageRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val customModelRepository: CustomModelRepository
 ) {
     fun getAllCategories(): List<EmotionCategory> {
         return categoryRepository.findAllByOrderByNameAsc()
     }
 
     fun getAllCategoriesForUser(userId: String): List<EmotionCategory> {
+        val customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
         val categories = categoryRepository.findAllByOrderByNameAsc()
         return categories.map { category ->
-            val userImages = trainingImageRepository.findByCategoryIdAndUserId(category.id, userId)
+            val userImages = if (customModel != null) {
+                trainingImageRepository.findByCategoryIdAndCustomModelId(category.id, customModel.id)
+            } else {
+                emptyList()
+            }
             category.trainingImages = userImages.toMutableList()
             category.imageCount = userImages.size
             category
@@ -38,10 +46,25 @@ class CategoryService(
         val category = categoryRepository.findById(categoryId).orElse(null) ?: return null
         val user = userRepository.findById(userId).orElse(null) ?: return null
 
+        var customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
+        if (customModel == null) {
+            customModel = CustomModel(
+                id = UUID.randomUUID().toString(),
+                user = user,
+                accuracy = 0.0f,
+                metadata = "{}",
+                modelData = byteArrayOf(),
+                version = "0",
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            customModel = customModelRepository.save(customModel)
+        }
+
         val trainingImage = TrainingImage(
             id = UUID.randomUUID().toString(),
             category = category,
-            user = user,
+            customModel = customModel,
             imageData = imageData,
             fileName = fileName,
             uploadedAt = System.currentTimeMillis()
@@ -49,8 +72,8 @@ class CategoryService(
 
         val savedImage = trainingImageRepository.save(trainingImage)
 
-        category.imageCount = trainingImageRepository.countByCategoryIdAndUserId(categoryId, userId)
-        category.lastUpdated = System.currentTimeMillis()
+        category.imageCount = trainingImageRepository.countByCategoryIdAndCustomModelId(categoryId, customModel.id)
+        category.updatedAt = System.currentTimeMillis()
         categoryRepository.save(category)
 
         return savedImage
@@ -60,7 +83,7 @@ class CategoryService(
     fun deleteTrainingImage(categoryId: String, imageId: String, userId: String): Boolean {
         val image = trainingImageRepository.findById(imageId).orElse(null) ?: return false
 
-        if (image.category?.id != categoryId || image.user?.id != userId) {
+        if (image.category?.id != categoryId || image.customModel?.user?.id != userId) {
             return false
         }
 
@@ -68,8 +91,13 @@ class CategoryService(
 
         val category = categoryRepository.findById(categoryId).orElse(null)
         category?.let {
-            it.imageCount = trainingImageRepository.countByCategoryIdAndUserId(categoryId, userId)
-            it.lastUpdated = System.currentTimeMillis()
+            val customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
+            it.imageCount = if (customModel != null) {
+                trainingImageRepository.countByCategoryIdAndCustomModelId(categoryId, customModel.id)
+            } else {
+                0
+            }
+            it.updatedAt = System.currentTimeMillis()
             categoryRepository.save(it)
         }
 
@@ -77,22 +105,37 @@ class CategoryService(
     }
 
     fun getTrainingImagesByCategory(categoryId: String, userId: String): List<TrainingImage> {
-        return trainingImageRepository.findByCategoryIdAndUserId(categoryId, userId)
+        val customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
+        return if (customModel != null) {
+            trainingImageRepository.findByCategoryIdAndCustomModelId(categoryId, customModel.id)
+        } else {
+            emptyList()
+        }
     }
 
     fun getCategoryByIdForUser(categoryId: String, userId: String): EmotionCategory? {
         val category = categoryRepository.findById(categoryId).orElse(null) ?: return null
-        val userImages = trainingImageRepository.findByCategoryIdAndUserId(categoryId, userId)
+        val customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
+        val userImages = if (customModel != null) {
+            trainingImageRepository.findByCategoryIdAndCustomModelId(categoryId, customModel.id)
+        } else {
+            emptyList()
+        }
         category.trainingImages = userImages.toMutableList()
         category.imageCount = userImages.size
         return category
     }
 
     fun getAllTrainingImagesForUser(userId: String): Map<EmotionCategory, List<TrainingImage>> {
+        val customModel = customModelRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
         val categories = categoryRepository.findAllByOrderByNameAsc()
-        return categories.associateWith { category ->
-            trainingImageRepository.findByCategoryIdAndUserId(category.id, userId)
-        }.filterValues { it.isNotEmpty() }
+        return if (customModel != null) {
+            categories.associateWith { category ->
+                trainingImageRepository.findByCategoryIdAndCustomModelId(category.id, customModel.id)
+            }.filterValues { it.isNotEmpty() }
+        } else {
+            emptyMap()
+        }
     }
 
     @Transactional
@@ -102,13 +145,13 @@ class CategoryService(
         }
 
         val defaultCategories = listOf(
-            EmotionCategory("colere", "Colère", "Angry", "😠", "#FF5252", "Émotion de colère"),
-            EmotionCategory("degout", "Dégoût", "Disgust", "🤢", "#9C27B0", "Émotion de dégoût"),
-            EmotionCategory("peur", "Peur", "Fear", "😨", "#673AB7", "Émotion de peur"),
-            EmotionCategory("joie", "Joie", "Happy", "😄", "#FFC107", "Émotion de joie"),
-            EmotionCategory("tristesse", "Tristesse", "Sad", "😢", "#2196F3", "Émotion de tristesse"),
-            EmotionCategory("surprise", "Surprise", "Surprise", "😲", "#FF9800", "Émotion de surprise"),
-            EmotionCategory("neutre", "Neutre", "Neutral", "😐", "#9E9E9E", "Émotion neutre")
+            EmotionCategory("angry", "Colère", "Angry", "😠", "#FF5252", "Émotion de colère"),
+            EmotionCategory("disgust", "Dégoût", "Disgust", "🤢", "#9C27B0", "Émotion de dégoût"),
+            EmotionCategory("fear", "Peur", "Fear", "😨", "#673AB7", "Émotion de peur"),
+            EmotionCategory("happy", "Joie", "Happy", "😄", "#FFC107", "Émotion de joie"),
+            EmotionCategory("sad", "Tristesse", "Sad", "😢", "#2196F3", "Émotion de tristesse"),
+            EmotionCategory("surprise", "Surpris", "Surprise", "😲", "#FF9800", "Émotion de surprise"),
+            EmotionCategory("neutral", "Neutre", "Neutral", "😐", "#9E9E9E", "Émotion neutre")
         )
 
         categoryRepository.saveAll(defaultCategories)

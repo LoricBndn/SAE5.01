@@ -34,11 +34,11 @@ class CategoryController(
                 color = category.color,
                 description = category.description,
                 imageCount = category.imageCount,
+                createdAt = category.createdAt,
+                updatedAt = category.updatedAt,
                 trainingImages = category.trainingImages.map {
                     "/api/files/training/${it.id}"
-                },
-                createdAt = category.createdAt,
-                lastUpdated = category.lastUpdated
+                }
             )
         }
 
@@ -70,11 +70,11 @@ class CategoryController(
             color = category.color,
             description = category.description,
             imageCount = category.imageCount,
+            createdAt = category.createdAt,
+            updatedAt = category.updatedAt,
             trainingImages = category.trainingImages.map {
                 "/api/files/training/${it.id}"
-            },
-            createdAt = category.createdAt,
-            lastUpdated = category.lastUpdated
+            }
         )
 
         return ResponseEntity.ok(response)

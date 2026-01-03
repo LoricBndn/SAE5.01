@@ -7,22 +7,22 @@ import jakarta.persistence.*
 data class TrainingImage(
     @Id
     @Column(length = 255)
-    var id: String = "",
+    var id: String,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
-    var category: EmotionCategory? = null,
+    var category: EmotionCategory,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    var user: User? = null,
+    @JoinColumn(name = "custom_model_id", nullable = false)
+    var customModel: CustomModel,
 
     @Lob
     @Column(nullable = false, columnDefinition = "MEDIUMBLOB")
-    var imageData: ByteArray = byteArrayOf(),
+    var imageData: ByteArray,
 
     @Column(length = 255)
-    var fileName: String? = null,
+    var fileName: String,
 
     @Column(nullable = false)
     var uploadedAt: Long = System.currentTimeMillis()

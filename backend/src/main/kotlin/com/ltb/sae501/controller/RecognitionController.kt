@@ -4,6 +4,7 @@ import com.ltb.sae501.dto.RecognitionRequest
 import com.ltb.sae501.dto.RecognitionResponse
 import com.ltb.sae501.dto.RecognizedEmotionDto
 import com.ltb.sae501.service.RecognitionService
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
@@ -17,6 +18,8 @@ import java.util.*
 class RecognitionController(
     private val recognitionService: RecognitionService
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+    
     @PostMapping(consumes = ["multipart/form-data"])
     fun saveRecognition(
         @RequestParam("image") imageFile: MultipartFile,
@@ -24,14 +27,25 @@ class RecognitionController(
         authentication: Authentication
     ): ResponseEntity<RecognitionResponse> {
         try {
-            val emotions = parseEmotionsJson(emotionsJson)
-
             val userId = authentication.principal as String
+            logger.info("[SYNC] Receiving recognition from user: $userId")
+            logger.info("[SYNC] Image size: ${imageFile.size} bytes, Emotions JSON: $emotionsJson")
+            
+            val emotions = parseEmotionsJson(emotionsJson)
+            logger.info("[SYNC] Parsed ${emotions.size} emotions: $emotions")
+
             val imageData = imageFile.bytes
             val recognition = recognitionService.saveRecognition(imageData, emotions, userId)
+            logger.info("[SYNC] Successfully saved recognition with ID: ${recognition.id}")
 
             val emotionDtos = recognition.recognizedEmotions.map {
-                RecognizedEmotionDto(it.emotion, it.confidence)
+                RecognizedEmotionDto(
+                    id = it.id,
+                    recognitionId = recognition.id,
+                    emotionId = it.emotionCategory?.id ?: "",
+                    confidence = it.confidence,
+                    detectedAt = it.detectedAt
+                )
             }
 
             val response = RecognitionResponse(
@@ -44,6 +58,7 @@ class RecognitionController(
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response)
         } catch (e: Exception) {
+            logger.error("[SYNC ERROR] Failed to save recognition", e)
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
     }
@@ -59,7 +74,13 @@ class RecognitionController(
                 detectedAt = recognition.detectedAt,
                 imageUrl = "/api/files/recognition/${recognition.id}",
                 recognizedEmotions = recognition.recognizedEmotions.map {
-                    RecognizedEmotionDto(it.emotion, it.confidence)
+                    RecognizedEmotionDto(
+                        id = it.id,
+                        recognitionId = recognition.id,
+                        emotionId = it.emotionCategory?.id ?: "",
+                        confidence = it.confidence,
+                        detectedAt = it.detectedAt
+                    )
                 },
                 userId = recognition.user?.id
             )
@@ -86,7 +107,13 @@ class RecognitionController(
             detectedAt = recognition.detectedAt,
             imageUrl = "/api/files/recognition/${recognition.id}",
             recognizedEmotions = recognition.recognizedEmotions.map {
-                RecognizedEmotionDto(it.emotion, it.confidence)
+                RecognizedEmotionDto(
+                    id = it.id,
+                    recognitionId = recognition.id,
+                    emotionId = it.emotionCategory?.id ?: "",
+                    confidence = it.confidence,
+                    detectedAt = it.detectedAt
+                )
             },
             userId = recognition.user?.id
         )
@@ -116,12 +143,12 @@ class RecognitionController(
 
     private fun parseEmotionsJson(json: String): List<Pair<String, Float>> {
         val emotions = mutableListOf<Pair<String, Float>>()
-        val regex = """"emotion"\s*:\s*"([^"]+)"\s*,\s*"confidence"\s*:\s*([\d.]+)""".toRegex()
+        val regex = """"emotionId"\s*:\s*"([^"]+)"\s*,\s*"confidence"\s*:\s*([\d.]+)""".toRegex()
 
         regex.findAll(json).forEach { match ->
-            val emotion = match.groupValues[1]
+            val emotionId = match.groupValues[1]
             val confidence = match.groupValues[2].toFloat()
-            emotions.add(emotion to confidence)
+            emotions.add(emotionId to confidence)
         }
 
         return emotions

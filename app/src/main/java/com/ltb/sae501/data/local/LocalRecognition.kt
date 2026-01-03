@@ -34,7 +34,8 @@ data class LocalRecognition(
         return RecognitionResult(
             id = remoteId ?: id,
             userId = userId,
-            imageStorageUrl = "file://$imageLocalPath",
+            imageData = null,
+            imageLocalPath = imageLocalPath,
             detectedAt = detectedAt,
             recognizedEmotions = emotions,
         )

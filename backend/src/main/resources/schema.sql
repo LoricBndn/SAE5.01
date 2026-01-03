@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     created_at BIGINT NOT NULL,
-    last_login BIGINT,
+    last_login BIGINT NOT NULL,
     INDEX idx_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -26,20 +26,34 @@ CREATE TABLE IF NOT EXISTS emotion_categories (
     INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Table 3: Training Images (for emotion categories)
+-- Table 3: Custom Models
+CREATE TABLE IF NOT EXISTS custom_models (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    accuracy FLOAT NOT NULL,
+    metadata JSON NOT NULL,
+    model_data MEDIUMBLOB NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Table 4: Training Images (for emotion categories)
 CREATE TABLE IF NOT EXISTS training_images (
     id VARCHAR(255) PRIMARY KEY,
     category_id VARCHAR(50) NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
+    custom_model_id VARCHAR(255) NOT NULL,
     image_data MEDIUMBLOB NOT NULL,
     file_name VARCHAR(255),
     uploaded_at BIGINT NOT NULL,
     FOREIGN KEY (category_id) REFERENCES emotion_categories(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (custom_model_id) REFERENCES custom_models(id) ON DELETE CASCADE,
     INDEX idx_category_id (category_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Table 4: Recognition Results
+-- Table 5: Recognition Results
 CREATE TABLE IF NOT EXISTS recognition_results (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255),
@@ -49,7 +63,7 @@ CREATE TABLE IF NOT EXISTS recognition_results (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Table 5: Recognized Emotions (one-to-many with recognition_results)
+-- Table 6: Recognized Emotions (one-to-many with recognition_results)
 CREATE TABLE IF NOT EXISTS recognized_emotions (
     id VARCHAR(255) PRIMARY KEY,
     recognition_id VARCHAR(255) NOT NULL,
@@ -63,11 +77,11 @@ CREATE TABLE IF NOT EXISTS recognized_emotions (
 
 -- Insert default FER-2013 emotion categories
 INSERT INTO emotion_categories (id, name, name_en, emoji, color, description, image_count, created_at, updated_at) VALUES
-('colere', 'Colère', 'Angry', '😠', '#FF5252', 'Émotion de colère', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('degout', 'Dégoût', 'Disgust', '🤢', '#9C27B0', 'Émotion de dégoût', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('peur', 'Peur', 'Fear', '😨', '#673AB7', 'Émotion de peur', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('joie', 'Joie', 'Happy', '😄', '#FFC107', 'Émotion de joie', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('tristesse', 'Tristesse', 'Sad', '😢', '#2196F3', 'Émotion de tristesse', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('surprise', 'Surprise', 'Surprise', '😲', '#FF9800', 'Émotion de surprise', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
-('neutre', 'Neutre', 'Neutral', '😐', '#9E9E9E', 'Émotion neutre', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000)
+('angry', 'Colère', 'Angry', '😠', '#FF5252', 'Émotion de colère', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('disgust', 'Dégoût', 'Disgust', '🤢', '#9C27B0', 'Émotion de dégoût', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('fear', 'Peur', 'Fear', '😨', '#673AB7', 'Émotion de peur', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('happy', 'Joie', 'Happy', '😄', '#FFC107', 'Émotion de joie', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('sad', 'Tristesse', 'Sad', '😢', '#2196F3', 'Émotion de tristesse', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('surprise', 'Surpris', 'Surprise', '😲', '#FF9800', 'Émotion de surprise', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
+('neutral', 'Neutre', 'Neutral', '😐', '#9E9E9E', 'Émotion neutre', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000)
 ON DUPLICATE KEY UPDATE name=name; -- Avoid duplicates if already exists

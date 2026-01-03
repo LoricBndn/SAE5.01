@@ -73,20 +73,17 @@ class RemoteDataSource(private val context: Context) {
     }
 
     suspend fun saveRecognition(
-        imageUri: Uri,
+        imageData: ByteArray,
         recognizedEmotions: List<RecognizedEmotion>
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val imageFile = uriToFile(imageUri)
-            val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-            val imagePart = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
+        try {            
+            val requestFile = imageData.toRequestBody("image/jpeg".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("image", "recognition.jpg", requestFile)
 
             val emotionsJson = buildEmotionsJson(recognizedEmotions)
             val emotionsBody = emotionsJson.toRequestBody("text/plain".toMediaTypeOrNull())
 
             val response = apiService.saveRecognition(imagePart, emotionsBody)
-
-            imageFile.delete()
 
             if (response.isSuccessful) {
                 true
@@ -95,7 +92,6 @@ class RemoteDataSource(private val context: Context) {
                 false
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             e.printStackTrace()
             false
         }
@@ -110,7 +106,8 @@ class RemoteDataSource(private val context: Context) {
                         RecognitionResult(
                             id = dto.id,
                             userId = dto.userId,
-                            imageStorageUrl = buildImageUrl(dto.imageStorageUrl),
+                            imageData = null,
+                            imageLocalPath = null,
                             detectedAt = dto.detectedAt,
                             recognizedEmotions = dto.recognizedEmotions.map { emotionDto ->
                                 RecognizedEmotion(

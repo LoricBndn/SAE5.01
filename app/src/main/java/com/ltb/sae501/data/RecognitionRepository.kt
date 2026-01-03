@@ -101,9 +101,9 @@ class RecognitionRepository(
                 return false
             }
             
-            val imageUri = Uri.fromFile(imageFile)         
+            val imageData = imageFile.readBytes()
             val emotions = parseEmotionsFromJson(local.emotionsJson)
-            val success = remoteDataSource.saveRecognition(imageUri, emotions)
+            val success = remoteDataSource.saveRecognition(imageData, emotions)
             
             if (success) {
                 dao.update(local.copy(isSynced = true, remoteId = local.id))

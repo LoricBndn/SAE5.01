@@ -13,7 +13,8 @@ import java.util.*
 class RecognitionService(
     private val recognitionResultRepository: RecognitionResultRepository,
     private val recognizedEmotionRepository: RecognizedEmotionRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val emotionCategoryRepository: com.ltb.sae501.repository.EmotionCategoryRepository
 ) {
     @Transactional
     fun saveRecognition(
@@ -22,9 +23,7 @@ class RecognitionService(
         userId: String
     ): RecognitionResult {
         val user = userRepository.findById(userId).orElse(null)
-        if (user == null) {
-            throw IllegalArgumentException("User not found: $userId")
-        }
+            ?: throw IllegalArgumentException("User not found: $userId")
 
         val recognition = RecognitionResult(
             id = UUID.randomUUID().toString(),
@@ -35,16 +34,19 @@ class RecognitionService(
 
         val savedRecognition = recognitionResultRepository.save(recognition)
 
-        emotions.forEach { (emotion, confidence) ->
+        emotions.forEach { (emotionId, confidence) ->
+            val emotionCategory = emotionCategoryRepository.findById(emotionId).orElse(null)
+                ?: throw IllegalArgumentException("Emotion category not found: $emotionId")
+            
             val recognizedEmotion = RecognizedEmotion(
+                id = UUID.randomUUID().toString(),
                 recognitionResult = savedRecognition,
-                emotion = emotion,
-                confidence = confidence
+                emotionCategory = emotionCategory,
+                confidence = confidence,
+                detectedAt = savedRecognition.detectedAt
             )
             savedRecognition.recognizedEmotions.add(recognizedEmotion)
         }
-
-        recognizedEmotionRepository.saveAll(savedRecognition.recognizedEmotions)
 
         return savedRecognition
     }

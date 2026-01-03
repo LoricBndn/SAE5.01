@@ -111,7 +111,7 @@ fun HistoryScreen(
                         onClick = {
                             coroutineScope.launch {
                                 showDeleteDialog?.let { item ->
-                                    repository.deleteRecognition(item.id, item.imageStorageUrl)
+                                    repository.deleteRecognition(item.id, item.imageLocalPath)
                                 }
                                 showDeleteDialog = null
                             }
@@ -206,7 +206,7 @@ fun ModernHistoryCard(
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         AsyncImage(
-                            model = result.imageStorageUrl,
+                            model = result.imageLocalPath,
                             contentDescription = "Image reconnue",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -273,9 +273,8 @@ fun EmotionProgressBar(
     categories: List<com.ltb.sae501.data.models.EmotionCategory>,
     rank: Int
 ) {
-    // Trouver le nom de l'émotion depuis les catégories
     val emotionName = categories.find { it.id == emotion.emotionId }?.name 
-        ?: emotion.emotionId  // Fallback sur l'ID si catégorie introuvable
+        ?: emotion.emotionId
     
     Column {
         Row(

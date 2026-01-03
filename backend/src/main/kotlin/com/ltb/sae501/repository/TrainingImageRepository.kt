@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository
 interface TrainingImageRepository : JpaRepository<TrainingImage, String> {
     fun findByCategoryId(categoryId: String): List<TrainingImage>
     fun countByCategoryId(categoryId: String): Int
-    fun findByCategoryIdAndUserId(categoryId: String, userId: String): List<TrainingImage>
-    fun countByCategoryIdAndUserId(categoryId: String, userId: String): Int
+    fun findByCategoryIdAndCustomModelId(categoryId: String, customModelId: String): List<TrainingImage>
+    fun countByCategoryIdAndCustomModelId(categoryId: String, customModelId: String): Int
 }

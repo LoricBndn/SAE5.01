@@ -104,11 +104,11 @@ class TrainingService(
             id = UUID.randomUUID().toString(),
             user = user,
             modelData = modelData,
-            version = version,
+            version = version.toString(),
             accuracy = 0.0f,
-            trainingImageCount = 0,
+            metadata = metadataJson,
             createdAt = System.currentTimeMillis(),
-            metadataJson = metadataJson
+            updatedAt = System.currentTimeMillis()
         )
 
         return customModelRepository.save(customModel)
@@ -236,18 +236,17 @@ class TrainingService(
             IllegalArgumentException("User not found")
         }
 
-        val imageCount = trainingImageRepository.countByCategoryIdAndUserId("", userId)
         val version = (customModelRepository.countByUserId(userId) + 1)
 
         val customModel = CustomModel(
             id = UUID.randomUUID().toString(),
             user = user,
             modelData = modelData,
-            version = version,
+            version = version.toString(),
             accuracy = 0.85f,
-            trainingImageCount = imageCount,
+            metadata = "{\"epochs\": 15, \"batchSize\": 16}",
             createdAt = System.currentTimeMillis(),
-            metadataJson = "{\"epochs\": 15, \"batchSize\": 16}"
+            updatedAt = System.currentTimeMillis()
         )
 
         customModelRepository.save(customModel)

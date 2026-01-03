@@ -10,19 +10,16 @@ data class RecognitionResult(
     @Column(length = 255)
     var id: String = "",
 
-    @Column(nullable = false)
-    var detectedAt: Long = System.currentTimeMillis(),
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    var user: User = User(),
 
     @Lob
     @Column(nullable = false, columnDefinition = "MEDIUMBLOB")
     var imageData: ByteArray = byteArrayOf(),
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    var user: User? = null,
-
-    @Column(insertable = false, updatable = false)
-    var createdAt: Instant = Instant.now(),
+    @Column(nullable = false)
+    var detectedAt: Long = System.currentTimeMillis(),
 
     @OneToMany(mappedBy = "recognitionResult", cascade = [CascadeType.ALL], orphanRemoval = true)
     var recognizedEmotions: MutableList<RecognizedEmotion> = mutableListOf()

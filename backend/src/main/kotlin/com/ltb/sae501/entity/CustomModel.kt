@@ -11,26 +11,29 @@ data class CustomModel(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    var user: User? = null,
+    var user: User = User(),
+
+    @Column(nullable = false)
+    var accuracy: Float = 0.0f,
+
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    var metadata: String = "",
 
     @Lob
     @Column(nullable = false, columnDefinition = "MEDIUMBLOB")
     var modelData: ByteArray = byteArrayOf(),
 
-    @Column(nullable = false)
-    var version: Int = 1,
-
-    @Column(nullable = false)
-    var accuracy: Float = 0.0f,
-
-    @Column(nullable = false)
-    var trainingImageCount: Int = 0,
+    @Column(nullable = false, length = 50)
+    var version: String = "",
 
     @Column(nullable = false)
     var createdAt: Long = System.currentTimeMillis(),
 
-    @Column(length = 1000)
-    var metadataJson: String? = null
+    @Column(nullable = false)
+    var updatedAt: Long = System.currentTimeMillis(),
+
+    @OneToMany(mappedBy = "customModel", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var trainingImages: MutableList<TrainingImage> = mutableListOf()
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

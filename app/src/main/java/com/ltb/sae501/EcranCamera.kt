@@ -271,14 +271,11 @@ fun EcranCamera(
                                     }
 
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                        Log.d("EcranCamera", "Photo sauvegardée: ${photoFile.absolutePath}")
-
                                         val uri = output.savedUri ?: Uri.fromFile(photoFile)
 
                                         val emotionsToSave = emotions.values.mapNotNull { emotionResult ->
                                             val category = categories.find { cat ->
-                                                cat.nameEn.equals(emotionResult.emotion, ignoreCase = true) ||
-                                                cat.name.equals(emotionResult.emotion, ignoreCase = true)
+                                                cat.id.equals(emotionResult.emotion, ignoreCase = true)
                                             }
                                             
                                             if (category != null) {
@@ -290,7 +287,6 @@ fun EcranCamera(
                                                     detectedAt = System.currentTimeMillis()
                                                 )
                                             } else {
-                                                Log.w("EcranCamera", "Catégorie introuvable pour: ${emotionResult.emotion}")
                                                 null
                                             }
                                         }.toList()
@@ -301,14 +297,7 @@ fun EcranCamera(
                                                     imageUri = uri,
                                                     emotions = emotionsToSave
                                                 )
-                                                if (success) {
-                                                    Log.d("EcranCamera", "Sauvegardé localement!")
-                                                } else {
-                                                    Log.e("EcranCamera", "Échec sauvegarde locale")
-                                                }
                                             }
-                                        } else {
-                                            Log.w("EcranCamera", "Aucune émotion à sauvegarder")
                                         }
                                     }
                                 }

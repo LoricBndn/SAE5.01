@@ -9,10 +9,10 @@ data class EmotionCategory(
     @Column(length = 50)
     var id: String = "",
 
-    @Column(nullable = false, length = 100)
+    @Column(unique = true, nullable = false, length = 100)
     var name: String = "",
 
-    @Column(nullable = false, length = 100)
+    @Column(unique = true, nullable = false, length = 100)
     var nameEn: String = "",
 
     @Column(length = 10)
@@ -31,7 +31,7 @@ data class EmotionCategory(
     var createdAt: Long = System.currentTimeMillis(),
 
     @Column(nullable = false)
-    var lastUpdated: Long = System.currentTimeMillis(),
+    var updatedAt: Long = System.currentTimeMillis(),
 
     @OneToMany(mappedBy = "category", cascade = [CascadeType.ALL], orphanRemoval = true)
     var trainingImages: MutableList<TrainingImage> = mutableListOf()

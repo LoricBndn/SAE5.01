@@ -6,12 +6,13 @@ import jakarta.persistence.*
 @Table(name = "users")
 data class User(
     @Id
+    @Column(length = 255)
     var id: String = "",
 
     @Column(unique = true, nullable = false, length = 100)
     var username: String = "",
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     var password: String = "",
 
     @Column(length = 255)
@@ -20,12 +21,12 @@ data class User(
     @Column(nullable = false)
     var createdAt: Long = System.currentTimeMillis(),
 
-    @Column
-    var lastLogin: Long? = null,
+    @Column(nullable = false)
+    var lastLogin: Long? = System.currentTimeMillis(),
 
     @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], orphanRemoval = false)
     var recognitions: MutableList<RecognitionResult> = mutableListOf(),
 
-    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var trainingImages: MutableList<TrainingImage> = mutableListOf()
+    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], orphanRemoval = false)
+    var customModels: MutableList<CustomModel> = mutableListOf()
 )
