@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.ui.theme.AccentPink
 import com.ltb.sae501.ui.theme.AccentDelete
+import com.ltb.sae501.preferences.AppPreferences
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,11 +31,10 @@ fun SettingsScreen(
     dataSource: RemoteDataSource,
     onNavigateToCategoryManagement: () -> Unit = {}
 ) {
-    var isPercentageShown by remember { mutableStateOf(true) }
-    var isAutoSaveEnabled by remember { mutableStateOf(true) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var isPercentageShown by remember { mutableStateOf(AppPreferences.isPercentageShown()) }
+    var isAutoSaveEnabled by remember { mutableStateOf(AppPreferences.isAutoSaveEnabled()) }
+    var showDeleteDialog by remember { mutableStateOf(AppPreferences.isDarkModeEnabled()) }
     val coroutineScope = rememberCoroutineScope()
-
 
     Column(
         modifier = Modifier
@@ -71,7 +71,10 @@ fun SettingsScreen(
                 icon = Icons.Filled.Percent,
                 iconTint = MaterialTheme.colorScheme.primary,
                 checked = isPercentageShown,
-                onCheckedChange = { isPercentageShown = it }
+                onCheckedChange = { 
+                    isPercentageShown = it
+                    AppPreferences.setPercentageShown(it)
+                }
             )
 
             SettingsSwitchItem(
@@ -80,7 +83,10 @@ fun SettingsScreen(
                 icon = Icons.Outlined.PhotoCamera,
                 iconTint = MaterialTheme.colorScheme.primary,
                 checked = isAutoSaveEnabled,
-                onCheckedChange = { isAutoSaveEnabled = it }
+                onCheckedChange = { 
+                    isAutoSaveEnabled = it
+                    AppPreferences.setAutoSaveEnabled(it)
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -109,13 +115,12 @@ fun SettingsScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Supprimer toutes les données?") },
+            title = { Text("Supprimer toutes les données ?") },
             text = { Text("Ceci inclut votre historique et vos configurations. Cette action est irréversible.") },
             confirmButton = {
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            // Logique de suppression ici
                             showDeleteDialog = false
                         }
                     },

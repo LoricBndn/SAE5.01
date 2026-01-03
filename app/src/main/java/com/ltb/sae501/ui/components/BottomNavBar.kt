@@ -2,7 +2,7 @@ package com.ltb.sae501.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.*
@@ -23,7 +23,7 @@ fun BottomNavBar(
         NavItem("home", Icons.Default.Home, "Accueil"),
         NavItem("camera", Icons.Outlined.PhotoCamera, "Caméra"),
         NavItem("history", Icons.Outlined.History, "Historique"),
-        NavItem("settings", Icons.Default.Settings, "Paramètres")
+        NavItem("profile", Icons.Outlined.AccountCircle, "Profil")
     )
 
     NavigationBar(
