@@ -1,5 +1,10 @@
 package com.ltb.sae501.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,18 +20,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ltb.sae501.auth.TokenManager
+import coil.compose.AsyncImage
 import com.ltb.sae501.network.RemoteDataSource
+import com.ltb.sae501.ui.theme.ButtonGradientBrush
+import com.ltb.sae501.ui.theme.IconGradientBrush
 import kotlinx.coroutines.launch
 
 @Composable
@@ -45,245 +55,270 @@ fun AuthScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E1E)),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF2A2A2A)
-            ),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        Spacer(modifier = Modifier.weight(0.5f))
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            AsyncImage(
+                model = "file:///android_asset/icon.png",
+                contentDescription = "Icône de l'application",
+                modifier = Modifier.size(80.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "MoodScan",
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(
+                    brush = IconGradientBrush
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = if (isLoginMode)
+                    "Connectez-vous pour continuer"
+                else
+                    "Créez un compte pour commencer",
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Nom d'utilisateur") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Username"
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+
+            AnimatedVisibility(
+                visible = !isLoginMode,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
             ) {
-                // Title
-                Text(
-                    text = if (isLoginMode) "Connexion" else "Inscription",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                Text(
-                    text = if (isLoginMode)
-                        "Connectez-vous pour gérer l'IA"
-                    else
-                        "Créez un compte pour commencer",
-                    fontSize = 14.sp,
-                    color = Color(0xFFB0B0B0)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Nom d'utilisateur") },
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Username"
+                            imageVector = Icons.Default.Email,
+                            contentDescription = "Email"
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
+                        keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFFF18E06),
-                        unfocusedBorderColor = Color(0xFF3A3A3A),
-                        focusedLabelColor = Color(0xFFF18E06),
-                        unfocusedLabelColor = Color(0xFFB0B0B0)
-                    )
-                )
-
-                // Email field (only for registration)
-                if (!isLoginMode) {
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = "Email"
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                        ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color(0xFFF18E06),
-                            unfocusedBorderColor = Color(0xFF3A3A3A),
-                            focusedLabelColor = Color(0xFFF18E06),
-                            unfocusedLabelColor = Color(0xFFB0B0B0)
-                        )
-                    )
-                }
-
-                // Password field
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Mot de passe") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Password"
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Default.Visibility
-                                else
-                                    Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible)
-                                    "Masquer"
-                                else
-                                    "Afficher"
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary
                     ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            if (username.isNotBlank() && password.isNotBlank() &&
-                                (isLoginMode || email.isNotBlank())) {
-                                coroutineScope.launch {
-                                    isLoading = true
-                                    errorMessage = null
-                                    val result = if (isLoginMode) {
-                                        dataSource.login(username, password)
-                                    } else {
-                                        dataSource.register(username, email, password)
-                                    }
-                                    isLoading = false
-                                    result.onSuccess {
-                                        onAuthSuccess()
-                                    }.onFailure { exception ->
-                                        errorMessage = when {
-                                            exception.message?.contains("Unable to resolve host") == true ||
-                                            exception.message?.contains("Failed to connect") == true ||
-                                            exception is java.net.UnknownHostException ||
-                                            exception is java.net.ConnectException ||
-                                            exception is java.net.SocketTimeoutException -> {
-                                                "Impossible de se connecter au serveur. Vérifiez votre connexion."
-                                            }
-                                            else -> exception.message ?: if (isLoginMode) {
-                                                "Identifiants invalides"
-                                            } else {
-                                                "Échec de l'inscription"
-                                            }
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Mot de passe") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Password"
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Default.Visibility
+                            else
+                                Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible)
+                                "Masquer"
+                            else
+                                "Afficher"
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (username.isNotBlank() && password.isNotBlank() &&
+                            (isLoginMode || email.isNotBlank())) {
+                            coroutineScope.launch {
+                                isLoading = true
+                                errorMessage = null
+                                val result = if (isLoginMode) {
+                                    dataSource.login(username, password)
+                                } else {
+                                    dataSource.register(username, email, password)
+                                }
+                                isLoading = false
+                                result.onSuccess {
+                                    onAuthSuccess()
+                                }.onFailure { exception ->
+                                    errorMessage = when {
+                                        exception.message?.contains("Unable to resolve host") == true ||
+                                        exception.message?.contains("Failed to connect") == true ||
+                                        exception is java.net.UnknownHostException ||
+                                        exception is java.net.ConnectException ||
+                                        exception is java.net.SocketTimeoutException -> {
+                                            "Impossible de se connecter au serveur. Vérifiez votre connexion."
+                                        }
+                                        else -> exception.message ?: if (isLoginMode) {
+                                            "Identifiants invalides"
+                                        } else {
+                                            "Échec de l'inscription"
                                         }
                                     }
                                 }
                             }
                         }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFFF18E06),
-                        unfocusedBorderColor = Color(0xFF3A3A3A),
-                        focusedLabelColor = Color(0xFFF18E06),
-                        unfocusedLabelColor = Color(0xFFB0B0B0)
-                    )
+                    }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+
+            AnimatedVisibility(
+                visible = errorMessage != null,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                Text(
+                    text = errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
+            }
 
-                // Error message
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage!!,
-                        color = Color(0xFFFF5252),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            Spacer(modifier = Modifier.height(8.dp))
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Submit button
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            isLoading = true
-                            errorMessage = null
-                            val result = if (isLoginMode) {
-                                dataSource.login(username, password)
-                            } else {
-                                dataSource.register(username, email, password)
-                            }
-                            isLoading = false
-                            result.onSuccess {
-                                onAuthSuccess()
-                            }.onFailure { exception ->
-                                errorMessage = when {
-                                    exception.message?.contains("Unable to resolve host") == true ||
-                                    exception.message?.contains("Failed to connect") == true ||
-                                    exception is java.net.UnknownHostException ||
-                                    exception is java.net.ConnectException ||
-                                    exception is java.net.SocketTimeoutException -> {
-                                        "Impossible de se connecter au serveur. Vérifiez votre connexion."
-                                    }
-                                    else -> exception.message ?: if (isLoginMode) {
-                                        "Identifiants invalides"
-                                    } else {
-                                        "Échec de l'inscription"
-                                    }
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        isLoading = true
+                        errorMessage = null
+                        val result = if (isLoginMode) {
+                            dataSource.login(username, password)
+                        } else {
+                            dataSource.register(username, email, password)
+                        }
+                        isLoading = false
+                        result.onSuccess {
+                            onAuthSuccess()
+                        }.onFailure { exception ->
+                            errorMessage = when {
+                                exception.message?.contains("Unable to resolve host") == true ||
+                                exception.message?.contains("Failed to connect") == true ||
+                                exception is java.net.UnknownHostException ||
+                                exception is java.net.ConnectException ||
+                                exception is java.net.SocketTimeoutException -> {
+                                    "Impossible de se connecter au serveur. Vérifiez votre connexion."
+                                }
+                                else -> exception.message ?: if (isLoginMode) {
+                                    "Identifiants invalides"
+                                } else {
+                                    "Échec de l'inscription"
                                 }
                             }
                         }
-                    },
-                    enabled = !isLoading && username.isNotBlank() &&
-                              password.isNotBlank() &&
-                              (isLoginMode || email.isNotBlank()),
+                    }
+                },
+                enabled = !isLoading && username.isNotBlank() &&
+                          password.isNotBlank() &&
+                          (isLoginMode || email.isNotBlank()),
+                shape = RoundedCornerShape(50.dp),
+                contentPadding = PaddingValues(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF18E06),
-                        disabledContainerColor = Color(0xFF3A3A3A)
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                        .fillMaxSize()
+                        .then(
+                            if (!isLoading && username.isNotBlank() && password.isNotBlank() &&
+                                (isLoginMode || email.isNotBlank())
+                            ) {
+                                Modifier.background(ButtonGradientBrush, RoundedCornerShape(50.dp))
+                            } else {
+                                Modifier.background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(50.dp)
+                                )
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -293,30 +328,35 @@ fun AuthScreen(
                     } else {
                         Text(
                             text = if (isLoginMode) "Se connecter" else "S'inscrire",
+                            color = Color.White,
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
+            }
 
-                // Toggle mode button
-                TextButton(
-                    onClick = {
-                        isLoginMode = !isLoginMode
-                        errorMessage = null
+            TextButton(
+                onClick = {
+                    isLoginMode = !isLoginMode
+                    errorMessage = null
+                    email = ""
+                },
+                enabled = !isLoading,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text(
+                    text = if (isLoginMode) {
+                        "Pas de compte ? Inscrivez-vous"
+                    } else {
+                        "Déjà un compte ? Connectez-vous"
                     },
-                    enabled = !isLoading
-                ) {
-                    Text(
-                        text = if (isLoginMode) {
-                            "Pas de compte ? Inscrivez-vous"
-                        } else {
-                            "Déjà un compte ? Connectez-vous"
-                        },
-                        color = Color(0xFFF18E06)
-                    )
-                }
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp
+                )
             }
         }
+
+        Spacer(modifier = Modifier.weight(1f))
     }
 }

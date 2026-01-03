@@ -18,6 +18,6 @@ object CameraPreferences {
     }
 
     fun isFrontCamera(): Boolean {
-        return prefs.getBoolean(KEY_IS_FRONT_CAMERA, true) // true par défaut (caméra frontale)
+        return prefs.getBoolean(KEY_IS_FRONT_CAMERA, true)
     }
 }

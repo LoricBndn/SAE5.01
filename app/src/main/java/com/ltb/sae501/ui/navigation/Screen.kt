@@ -4,5 +4,5 @@ sealed class Screen(val route: String, val title: String) {
     object Home : Screen("home", "Accueil")
     object Camera : Screen("camera", "Caméra")
     object History : Screen("history", "Historique")
-    object Settings : Screen("settings", "Paramètres")
+    object Profile : Screen("profile", "Profil")
 }
