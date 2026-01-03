@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS emotion_categories (
     description TEXT,
     image_count INT DEFAULT 0,
     created_at BIGINT NOT NULL,
-    last_updated BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
     INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -30,37 +30,39 @@ CREATE TABLE IF NOT EXISTS emotion_categories (
 CREATE TABLE IF NOT EXISTS training_images (
     id VARCHAR(255) PRIMARY KEY,
     category_id VARCHAR(50) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     image_data MEDIUMBLOB NOT NULL,
     file_name VARCHAR(255),
     uploaded_at BIGINT NOT NULL,
     FOREIGN KEY (category_id) REFERENCES emotion_categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_category_id (category_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Table 4: Recognition Results
 CREATE TABLE IF NOT EXISTS recognition_results (
     id VARCHAR(255) PRIMARY KEY,
-    timestamp BIGINT NOT NULL,
-    image_data MEDIUMBLOB NOT NULL,
     user_id VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_data MEDIUMBLOB NOT NULL,
+    detected_at BIGINT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_timestamp (timestamp DESC),
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Table 5: Recognized Emotions (one-to-many with recognition_results)
 CREATE TABLE IF NOT EXISTS recognized_emotions (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     recognition_id VARCHAR(255) NOT NULL,
-    emotion VARCHAR(50) NOT NULL,
+    emotion_id VARCHAR(50) NOT NULL,
     confidence FLOAT NOT NULL,
+    detected_at BIGINT NOT NULL,
     FOREIGN KEY (recognition_id) REFERENCES recognition_results(id) ON DELETE CASCADE,
+    FOREIGN KEY (emotion_id) REFERENCES emotion_categories(id) ON DELETE CASCADE,
     INDEX idx_recognition_id (recognition_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Insert default FER-2013 emotion categories
-INSERT INTO emotion_categories (id, name, name_en, emoji, color, description, image_count, created_at, last_updated) VALUES
+INSERT INTO emotion_categories (id, name, name_en, emoji, color, description, image_count, created_at, updated_at) VALUES
 ('colere', 'Colère', 'Angry', '😠', '#FF5252', 'Émotion de colère', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
 ('degout', 'Dégoût', 'Disgust', '🤢', '#9C27B0', 'Émotion de dégoût', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),
 ('peur', 'Peur', 'Fear', '😨', '#673AB7', 'Émotion de peur', 0, UNIX_TIMESTAMP() * 1000, UNIX_TIMESTAMP() * 1000),

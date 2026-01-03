@@ -6,23 +6,33 @@ data class RecognitionResponse(
     @SerializedName("id")
     val id: String,
 
-    @SerializedName("timestamp")
-    val timestamp: Long,
+    @SerializedName("userId")
+    val userId: String?,
 
-    @SerializedName("imageUrl")
-    val imageUrl: String,
+    @SerializedName("imageStorageUrl")
+    val imageStorageUrl: String,
+
+    @SerializedName("detectedAt")
+    val detectedAt: Long,
 
     @SerializedName("recognizedEmotions")
     val recognizedEmotions: List<RecognizedEmotionDto>,
 
-    @SerializedName("userId")
-    val userId: String?
 )
 
 data class RecognizedEmotionDto(
-    @SerializedName("emotion")
-    val emotion: String,
+    @SerializedName("id")
+    val id: String,
+
+    @SerializedName("recognitionId")
+    val recognitionId: String,
+    
+    @SerializedName("emotionId")
+    val emotionId: String,
 
     @SerializedName("confidence")
-    val confidence: Float
+    val confidence: Float,
+
+    @SerializedName("detectedAt")
+    val detectedAt: Long,
 )

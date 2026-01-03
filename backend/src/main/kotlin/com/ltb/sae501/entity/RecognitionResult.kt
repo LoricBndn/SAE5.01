@@ -11,7 +11,7 @@ data class RecognitionResult(
     var id: String = "",
 
     @Column(nullable = false)
-    var timestamp: Long = System.currentTimeMillis(),
+    var detectedAt: Long = System.currentTimeMillis(),
 
     @Lob
     @Column(nullable = false, columnDefinition = "MEDIUMBLOB")

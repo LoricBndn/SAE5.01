@@ -24,12 +24,12 @@ data class CategoryResponse(
     @SerializedName("imageCount")
     val imageCount: Int,
 
-    @SerializedName("trainingImages")
-    val trainingImages: List<String>,
-
     @SerializedName("createdAt")
     val createdAt: Long,
 
-    @SerializedName("lastUpdated")
-    val lastUpdated: Long
+    @SerializedName("updatedAt")
+    val updatedAt: Long,
+
+    @SerializedName("trainingImages")
+    val trainingImages: List<String>,
 )

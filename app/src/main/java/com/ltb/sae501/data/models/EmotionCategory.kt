@@ -8,7 +8,7 @@ data class EmotionCategory @JvmOverloads constructor(
     var color: String = "",
     var description: String = "",
     var imageCount: Int = 0,
-    var trainingImages: List<String> = emptyList(),
     var createdAt: Long = System.currentTimeMillis(),
-    var lastUpdated: Long = System.currentTimeMillis()
+    var updatedAt: Long = System.currentTimeMillis(),
+    var trainingImages: List<String> = emptyList()
 )
