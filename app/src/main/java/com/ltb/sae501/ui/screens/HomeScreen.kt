@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Psychology
+import coil.compose.AsyncImage
 import com.ltb.sae501.ui.theme.ButtonGradientBrush
 import com.ltb.sae501.ui.theme.IconGradientBrush
 
@@ -36,19 +37,11 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(IconGradientBrush, RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Psychology,
-                    contentDescription = "Icône MoodScan Cerveau",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color.White
-                )
-            }
+            AsyncImage(
+                model = "file:///android_asset/icon.png",
+                contentDescription = "Icône de l'application",
+                modifier = Modifier.size(100.dp)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -85,7 +78,7 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(ButtonGradientBrush, RoundedCornerShape(50.dp)) // Ajoutez le shape ici aussi
+                        .background(ButtonGradientBrush, RoundedCornerShape(50.dp))
                         .padding(horizontal = 20.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
