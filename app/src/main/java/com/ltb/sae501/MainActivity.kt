@@ -25,6 +25,9 @@ import com.ltb.sae501.auth.TokenManager
 import com.ltb.sae501.ml.ModelMetadataManager
 import com.ltb.sae501.preferences.CameraPreferences
 import com.ltb.sae501.ml.DualModelDetector
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.ltb.sae501.preferences.AppPreferences
 
 class MainActivity : ComponentActivity() {
 
@@ -35,18 +38,20 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var dataSource: RemoteDataSource
     private lateinit var metadataManager: ModelMetadataManager
+    private lateinit var repository: com.ltb.sae501.data.RecognitionRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialiser les préférences
         TokenManager.init(this)
         CameraPreferences.init(this)
+        AppPreferences.init(this)
 
         dataSource = RemoteDataSource(this)
         detecteurEmotion = DualModelDetector(this)
         metadataManager = ModelMetadataManager(this)
+        repository = com.ltb.sae501.data.RecognitionRepository.getInstance(this, dataSource)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
@@ -59,9 +64,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            var isDarkTheme by remember { mutableStateOf(false) }
+            var isDarkTheme by remember { mutableStateOf(AppPreferences.isDarkModeEnabled()) }
             var isAuthenticated by remember { mutableStateOf(TokenManager.isLoggedIn()) }
-            // État de la caméra géré au niveau de MainActivity
+            val coroutineScope = rememberCoroutineScope()
             var isFrontCamera by remember { mutableStateOf(CameraPreferences.isFrontCamera()) }
 
             SAE501Theme(darkTheme = isDarkTheme) {
@@ -89,6 +94,7 @@ class MainActivity : ComponentActivity() {
                                 detecteurEmotion = detecteurEmotion,
                                 executeurEmotion = executeurEmotion,
                                 dataSource = dataSource,
+                                repository = repository,
                                 isFrontCamera = isFrontCamera,
                                 onCameraFlipped = { newValue ->
                                     isFrontCamera = newValue
@@ -96,19 +102,22 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             Screen.History.route -> HistoryScreen(
+                                repository = repository,
                                 dataSource = dataSource
                             )
-                            Screen.Settings.route -> SettingsScreen(
-                                dataSource = dataSource,
-                                onNavigateToCategoryManagement = {
-                                    if (TokenManager.isLoggedIn()) {
-                                        currentScreen = "category_management"
-                                    } else {
-                                        currentScreen = "auth"
-                                    }
+                            Screen.Profile.route -> ProfileScreen(
+                                repository = repository,
+                                onLogout = {
+                                    TokenManager.clearToken()
+                                    isAuthenticated = false
+                                    currentScreen = Screen.Home.route
                                 },
-                                isDarkModeEnabled = isDarkTheme,
-                                onSetDarkMode = { isDarkTheme = it }
+                                onNavigateToAuth = {
+                                    currentScreen = "auth"
+                                },
+                                onNavigateToSettings = {
+                                    currentScreen = "settings"
+                                }
                             )
                             "category_management" -> {
                                 if (TokenManager.isLoggedIn()) {
@@ -116,7 +125,7 @@ class MainActivity : ComponentActivity() {
                                         dataSource = dataSource,
                                         metadataManager = metadataManager,
                                         onNavigateBack = {
-                                            currentScreen = Screen.Settings.route
+                                            currentScreen = Screen.Profile.route
                                         },
                                         onNavigateToTraining = {
                                             currentScreen = "model_training"
@@ -127,6 +136,9 @@ class MainActivity : ComponentActivity() {
                                         dataSource = dataSource,
                                         onAuthSuccess = {
                                             isAuthenticated = true
+                                            coroutineScope.launch {
+                                                repository.syncAllPending()
+                                            }
                                             currentScreen = "category_management"
                                         }
                                     )
@@ -146,6 +158,9 @@ class MainActivity : ComponentActivity() {
                                         dataSource = dataSource,
                                         onAuthSuccess = {
                                             isAuthenticated = true
+                                            coroutineScope.launch {
+                                                repository.syncAllPending()
+                                            }
                                             currentScreen = "model_training"
                                         }
                                     )
@@ -155,6 +170,20 @@ class MainActivity : ComponentActivity() {
                                 dataSource = dataSource,
                                 onAuthSuccess = {
                                     isAuthenticated = true
+                                    coroutineScope.launch {
+                                        repository.syncAllPending()
+                                    }
+                                    currentScreen = Screen.Profile.route
+                                }
+                            )
+                            "settings" -> SettingsScreen(
+                                isDarkModeEnabled = isDarkTheme,
+                                onSetDarkMode = { 
+                                    isDarkTheme = it 
+                                    AppPreferences.setDarkModeEnabled(it)
+                                },
+                                dataSource = dataSource,
+                                onNavigateToCategoryManagement = {
                                     currentScreen = "category_management"
                                 }
                             )
