@@ -10,6 +10,7 @@ fun CameraScreen(
     detecteurEmotion: DualModelDetector,
     executeurEmotion: java.util.concurrent.ExecutorService,
     dataSource: RemoteDataSource,
+    repository: com.ltb.sae501.data.RecognitionRepository,
     isFrontCamera: Boolean,
     onCameraFlipped: (Boolean) -> Unit
 ) {
@@ -17,6 +18,7 @@ fun CameraScreen(
         detecteurEmotion = detecteurEmotion,
         executeurEmotion = executeurEmotion,
         dataSource = dataSource,
+        repository = repository,
         isFrontCamera = isFrontCamera,
         onCameraFlipped = onCameraFlipped
     )

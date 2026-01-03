@@ -46,6 +46,7 @@ fun EcranCamera(
     detecteurEmotion: DualModelDetector,
     executeurEmotion: java.util.concurrent.ExecutorService,
     dataSource: RemoteDataSource,
+    repository: com.ltb.sae501.data.RecognitionRepository,
     isFrontCamera: Boolean,
     onCameraFlipped: (Boolean) -> Unit
 ) {
@@ -56,6 +57,7 @@ fun EcranCamera(
 
     var visages by remember { mutableStateOf(listOf<Face>()) }
     var emotions by remember { mutableStateOf(mapOf<Int, CombinedEmotionResult>()) }
+    var categories by remember { mutableStateOf<List<com.ltb.sae501.data.models.EmotionCategory>>(emptyList()) }
     var largeurImage by remember { mutableIntStateOf(0) }
     var hauteurImage by remember { mutableIntStateOf(0) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
@@ -278,7 +280,7 @@ fun EcranCamera(
 
                                         if (emotionsToSave.isNotEmpty()) {
                                             coroutineScope.launch {
-                                                val success = dataSource.saveRecognition(
+                                                val success = repository.saveRecognition(
                                                     imageUri = uri,
                                                     recognizedEmotions = emotionsToSave
                                                 )
