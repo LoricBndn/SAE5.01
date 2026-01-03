@@ -46,11 +46,12 @@ class RecognitionRepository(
      * Sauvegarde une reconnaissance (offline-first)
      * 1. Copie l'image dans le stockage interne
      * 2. Sauvegarde localement dans Room
-     * 3. Si connecté: synchronise immédiatement
+     * 3. Si connecté et autoSaveEnabled: synchronise immédiatement
      */
     suspend fun saveRecognition(
         imageUri: Uri,
-        emotions: List<RecognizedEmotion>
+        emotions: List<RecognizedEmotion>,
+        autoSaveEnabled: Boolean = true
     ): Boolean {
         return try {
             val localImagePath = copyImageToInternalStorage(imageUri)
@@ -63,8 +64,8 @@ class RecognitionRepository(
             
             dao.insert(localRecognition)
             
-            if (TokenManager.isLoggedIn()) {
-                syncRecognition(localRecognition)
+            if (autoSaveEnabled && TokenManager.isLoggedIn()) {
+                val syncResult = syncRecognition(localRecognition)
             }
             
             true

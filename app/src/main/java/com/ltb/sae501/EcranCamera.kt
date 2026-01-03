@@ -65,6 +65,7 @@ fun EcranCamera(
     var enCoursAnalyse by remember { mutableStateOf(false) }
     
     val showPercentage by com.ltb.sae501.preferences.AppPreferences.isPercentageShownFlow.collectAsState()
+    val autoSaveEnabled by com.ltb.sae501.preferences.AppPreferences.isAutoSaveEnabledFlow.collectAsState()
 
     var frameCounter by remember { mutableIntStateOf(0) }
     val analyseFrequency = 3
@@ -296,9 +297,10 @@ fun EcranCamera(
 
                                         if (emotionsToSave.isNotEmpty()) {
                                             coroutineScope.launch {
-                                                val success = repository.saveRecognition(
+                                                repository.saveRecognition(
                                                     imageUri = uri,
-                                                    emotions = emotionsToSave
+                                                    emotions = emotionsToSave,
+                                                    autoSaveEnabled = autoSaveEnabled
                                                 )
                                             }
                                         }

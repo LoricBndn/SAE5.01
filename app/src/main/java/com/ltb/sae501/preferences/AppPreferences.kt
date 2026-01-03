@@ -19,10 +19,14 @@ object AppPreferences {
     
     private val _isPercentageShownFlow = MutableStateFlow(true)
     val isPercentageShownFlow: StateFlow<Boolean> = _isPercentageShownFlow.asStateFlow()
+    
+    private val _isAutoSaveEnabledFlow = MutableStateFlow(true)
+    val isAutoSaveEnabledFlow: StateFlow<Boolean> = _isAutoSaveEnabledFlow.asStateFlow()
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         _isPercentageShownFlow.value = isPercentageShown()
+        _isAutoSaveEnabledFlow.value = isAutoSaveEnabled()
     }
 
     fun setPercentageShown(value: Boolean) {
@@ -36,6 +40,7 @@ object AppPreferences {
 
     fun setAutoSaveEnabled(value: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_SAVE_ENABLED, value).apply()
+        _isAutoSaveEnabledFlow.value = value
     }
 
     fun isAutoSaveEnabled(): Boolean {

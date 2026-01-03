@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -42,8 +43,12 @@ fun HistoryScreen(
     dataSource: RemoteDataSource
 ) {
     val history by repository.getHistory().collectAsState(initial = emptyList())
+    val unsyncedCount by repository.getUnsyncedCount().collectAsState(initial = 0)
+    val isLoggedIn = com.ltb.sae501.auth.TokenManager.isLoggedIn()
     
     var categories by remember { mutableStateOf<List<com.ltb.sae501.data.models.EmotionCategory>>(emptyList()) }
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncMessage by remember { mutableStateOf<String?>(null) }
     
     LaunchedEffect(Unit) {
         dataSource.getCategories().collect { cats ->
@@ -53,6 +58,15 @@ fun HistoryScreen(
     
     val coroutineScope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf<RecognitionResult?>(null) }
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    LaunchedEffect(syncMessage) {
+        syncMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            syncMessage = null
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -64,12 +78,57 @@ fun HistoryScreen(
                         fontWeight = FontWeight.Bold
                     ) 
                 },
+                actions = {
+                    if (isLoggedIn && unsyncedCount > 0) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isSyncing = true
+                                    syncMessage = null
+                                    val syncedCount = repository.syncAllPending()
+                                    isSyncing = false
+                                    syncMessage = if (syncedCount > 0) {
+                                        "$syncedCount photo${if (syncedCount > 1) "s" else ""} synchronisée${if (syncedCount > 1) "s" else ""}"
+                                    } else {
+                                        "Échec de la synchronisation"
+                                    }
+                                }
+                            },
+                            enabled = !isSyncing
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = androidx.compose.ui.Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                androidx.compose.material.icons.Icons.Default.Sync.let { icon ->
+                                    androidx.compose.foundation.layout.Box {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = "Synchroniser",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        if (unsyncedCount > 0) {
+                                            androidx.compose.material3.Badge(
+                                                modifier = androidx.compose.ui.Modifier.align(Alignment.TopEnd)
+                                            ) {
+                                                Text("$unsyncedCount")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         if (history.isEmpty()) {
             EmptyHistoryState(
