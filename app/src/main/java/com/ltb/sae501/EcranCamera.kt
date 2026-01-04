@@ -1,8 +1,11 @@
 package com.ltb.sae501
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -11,8 +14,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,10 +26,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil.compose.AsyncImage
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -38,7 +47,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
-import android.os.Environment
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -50,7 +58,6 @@ fun EcranCamera(
     isFrontCamera: Boolean,
     onCameraFlipped: (Boolean) -> Unit
 ) {
-
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
@@ -63,7 +70,7 @@ fun EcranCamera(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
 
     var enCoursAnalyse by remember { mutableStateOf(false) }
-    
+
     val showPercentage by com.ltb.sae501.preferences.AppPreferences.isPercentageShownFlow.collectAsState()
     val autoSaveEnabled by com.ltb.sae501.preferences.AppPreferences.isAutoSaveEnabledFlow.collectAsState()
 
@@ -71,8 +78,35 @@ fun EcranCamera(
     val analyseFrequency = 3
     val emotionHistorySize = 5
     val emotionHistory = remember { mutableStateMapOf<Int, MutableList<CombinedEmotionResult>>() }
+    
+    var showResultDialog by remember { mutableStateOf(false) }
+    var analyzedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var analyzedEmotions by remember { mutableStateOf<List<Pair<String, Float>>>(emptyList()) }
+    var isAnalyzing by remember { mutableStateOf(false) }
 
     val previewView = remember { PreviewView(context) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            isAnalyzing = true
+            analyzeImageFromGallery(
+                context = context,
+                uri = it,
+                detecteurEmotion = detecteurEmotion,
+                executeurEmotion = executeurEmotion,
+                onAnalysisComplete = { emotions ->
+                    isAnalyzing = false
+                    if (emotions.isNotEmpty()) {
+                        analyzedImageUri = it
+                        analyzedEmotions = emotions
+                        showResultDialog = true
+                    }
+                }
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         dataSource.getCategories().collect { cats ->
@@ -140,8 +174,6 @@ fun EcranCamera(
                                                 if (bitmapVisage != null) {
                                                     val emotion = detecteurEmotion.detecterEmotion(bitmapVisage)
                                                     if (emotion != null) {
-                                                        Log.d("EcranCamera", "[Visage $index] Émotion: ${emotion.emotion} - Confiance: ${String.format("%.1f", emotion.confidence * 100)}% - Source: ${emotion.source}")
-
                                                         if (!emotionHistory.containsKey(index)) {
                                                             emotionHistory[index] = mutableListOf()
                                                         }
@@ -159,13 +191,7 @@ fun EcranCamera(
                                         }
 
                                         val emotionsLissees = calculerEmotionsLissees(emotionHistory)
-
-                                        emotionsLissees.forEach { (index, emotion) ->
-                                            Log.d("EcranCamera", "[Visage $index] Lissée: ${emotion.emotion} - ${String.format("%.1f", emotion.confidence * 100)}% - Source: ${emotion.source}")
-                                        }
-
                                         emotions = emotionsLissees
-
                                         copieBitmap.recycle()
                                     } catch (e: Exception) {
                                         Log.e("EcranCamera", "Erreur analyse émotions: ${e.message}", e)
@@ -197,9 +223,7 @@ fun EcranCamera(
             }
 
             try {
-
                 cameraProvider.unbindAll()
-
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     selecteurCamera,
@@ -214,7 +238,6 @@ fun EcranCamera(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
         AndroidView(
             factory = { previewView },
             modifier = Modifier.fillMaxSize()
@@ -240,22 +263,24 @@ fun EcranCamera(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Bouton Galerie
                 IconButton(
                     onClick = {
-                        onCameraFlipped(!isFrontCamera)
+                        galleryLauncher.launch("image/*")
                     },
                     modifier = Modifier
                         .size(56.dp)
                         .background(Color.White.copy(alpha = 0.3f), CircleShape)
                 ) {
                     Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_rotate),
-                        contentDescription = "Changer de caméra",
+                        painter = painterResource(android.R.drawable.ic_menu_gallery),
+                        contentDescription = "Galerie",
                         tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
 
+                // Bouton Capture
                 IconButton(
                     onClick = {
                         imageCapture?.let { capture ->
@@ -277,32 +302,15 @@ fun EcranCamera(
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                                         val uri = output.savedUri ?: Uri.fromFile(photoFile)
 
-                                        val emotionsToSave = emotions.values.mapNotNull { emotionResult ->
-                                            val category = categories.find { cat ->
-                                                cat.id.equals(emotionResult.emotion, ignoreCase = true)
-                                            }
-                                            
-                                            if (category != null) {
-                                                RecognizedEmotion(
-                                                    id = java.util.UUID.randomUUID().toString(),
-                                                    recognitionId = "",
-                                                    emotionId = category.id,
-                                                    confidence = emotionResult.confidence,
-                                                    detectedAt = System.currentTimeMillis()
-                                                )
-                                            } else {
-                                                null
-                                            }
-                                        }.toList()
+                                        // Préparer les émotions détectées en temps réel
+                                        val emotionsToShow = emotions.values.map { emotionResult ->
+                                            emotionResult.emotion to emotionResult.confidence
+                                        }.sortedByDescending { it.second }
 
-                                        if (emotionsToSave.isNotEmpty()) {
-                                            coroutineScope.launch {
-                                                repository.saveRecognition(
-                                                    imageUri = uri,
-                                                    emotions = emotionsToSave,
-                                                    autoSaveEnabled = autoSaveEnabled
-                                                )
-                                            }
+                                        if (emotionsToShow.isNotEmpty()) {
+                                            analyzedImageUri = uri
+                                            analyzedEmotions = emotionsToShow
+                                            showResultDialog = true
                                         }
                                     }
                                 }
@@ -324,9 +332,316 @@ fun EcranCamera(
                     )
                 }
 
-                Spacer(modifier = Modifier.size(56.dp))
+                // Bouton Retournement caméra
+                IconButton(
+                    onClick = {
+                        onCameraFlipped(!isFrontCamera)
+                    },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(
+                        painter = painterResource(android.R.drawable.ic_menu_rotate),
+                        contentDescription = "Changer de caméra",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
+
+        if (isAnalyzing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Text(
+                        "Analyse en cours...",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+
+    if (showResultDialog && analyzedImageUri != null) {
+        EmotionResultDialog(
+            imageUri = analyzedImageUri!!,
+            emotions = analyzedEmotions,
+            categories = categories,
+            autoSaveEnabled = autoSaveEnabled,
+            onDismiss = {
+                showResultDialog = false
+                analyzedImageUri = null
+                analyzedEmotions = emptyList()
+            },
+            onSave = {
+                coroutineScope.launch {
+                    val emotionsToSave = analyzedEmotions.mapNotNull { (emotionId, confidence) ->
+                        val category = categories.find { cat ->
+                            cat.id.equals(emotionId, ignoreCase = true)
+                        }
+
+                        if (category != null) {
+                            RecognizedEmotion(
+                                id = java.util.UUID.randomUUID().toString(),
+                                recognitionId = "",
+                                emotionId = category.id,
+                                confidence = confidence,
+                                detectedAt = System.currentTimeMillis()
+                            )
+                        } else {
+                            null
+                        }
+                    }
+
+                    if (emotionsToSave.isNotEmpty()) {
+                        repository.saveRecognition(
+                            imageUri = analyzedImageUri!!,
+                            emotions = emotionsToSave,
+                            autoSaveEnabled = true
+                        )
+                    }
+
+                    showResultDialog = false
+                    analyzedImageUri = null
+                    analyzedEmotions = emptyList()
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun EmotionResultDialog(
+    imageUri: Uri,
+    emotions: List<Pair<String, Float>>,
+    categories: List<com.ltb.sae501.data.models.EmotionCategory>,
+    autoSaveEnabled: Boolean,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Bouton fermer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Fermer",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "Image analysée",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    "Résultats de l'analyse",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Liste des émotions détectées
+                emotions.take(3).forEachIndexed { index, (emotionId, confidence) ->
+                    val category = categories.find { it.id.equals(emotionId, ignoreCase = true) }
+                    val emotionName = category?.name ?: emotionId
+                    val emoji = category?.emoji ?: "😐"
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                emoji,
+                                fontSize = 32.sp
+                            )
+                            Text(
+                                emotionName,
+                                fontSize = 18.sp,
+                                fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            "${(confidence * 100).toInt()}%",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = when (index) {
+                                0 -> MaterialTheme.colorScheme.primary
+                                1 -> MaterialTheme.colorScheme.secondary
+                                else -> MaterialTheme.colorScheme.tertiary
+                            }
+                        )
+                    }
+
+                    LinearProgressIndicator(
+                        progress = confidence,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = when (index) {
+                            0 -> MaterialTheme.colorScheme.primary
+                            1 -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.tertiary
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Boutons d'action
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (!autoSaveEnabled) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Ignorer", fontSize = 16.sp)
+                        }
+                    }
+
+                    Button(
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            if (autoSaveEnabled) "Continuer" else "Sauvegarder",
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun analyzeImageFromGallery(
+    context: android.content.Context,
+    uri: Uri,
+    detecteurEmotion: DualModelDetector,
+    executeurEmotion: java.util.concurrent.ExecutorService,
+    onAnalysisComplete: (List<Pair<String, Float>>) -> Unit
+) {
+    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    try {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+
+        if (bitmap == null) {
+            mainHandler.post { onAnalysisComplete(emptyList()) }
+            return
+        }
+
+        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        val optionsMlKit = FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .build()
+        val detecteurVisages = FaceDetection.getClient(optionsMlKit)
+
+        detecteurVisages.process(inputImage)
+            .addOnSuccessListener { visages ->
+                Log.d("GalleryAnalysis", "Visages détectés: ${visages.size}")
+                if (visages.isNotEmpty()) {
+                    val emotions = mutableListOf<Pair<String, Float>>()
+
+                    executeurEmotion.execute {
+                        try {
+                            visages.forEach { visage ->
+                                val bitmapVisage = detecteurEmotion.extraireVisage(bitmap, visage)
+                                if (bitmapVisage != null) {
+                                    val emotion = detecteurEmotion.detecterEmotion(bitmapVisage)
+                                    if (emotion != null) {
+                                        emotions.add(emotion.emotion to emotion.confidence)
+                                        Log.d("GalleryAnalysis", "Émotion détectée: ${emotion.emotion} - ${emotion.confidence}")
+                                    }
+                                    bitmapVisage.recycle()
+                                }
+                            }
+
+                            bitmap.recycle()
+
+                            // Trier par confiance décroissante
+                            val sortedEmotions = emotions.sortedByDescending { it.second }
+                            Log.d("GalleryAnalysis", "Total émotions: ${sortedEmotions.size}")
+
+                            mainHandler.post { onAnalysisComplete(sortedEmotions) }
+                        } catch (e: Exception) {
+                            Log.e("GalleryAnalysis", "Erreur dans l'exécuteur: ${e.message}", e)
+                            bitmap.recycle()
+                            mainHandler.post { onAnalysisComplete(emptyList()) }
+                        }
+                    }
+                } else {
+                    Log.d("GalleryAnalysis", "Aucun visage détecté")
+                    bitmap.recycle()
+                    mainHandler.post { onAnalysisComplete(emptyList()) }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("GalleryAnalysis", "Erreur détection visage: ${e.message}", e)
+                bitmap.recycle()
+                mainHandler.post { onAnalysisComplete(emptyList()) }
+            }
+    } catch (e: Exception) {
+        Log.e("GalleryAnalysis", "Erreur analyse image: ${e.message}", e)
+        mainHandler.post { onAnalysisComplete(emptyList()) }
     }
 }
 

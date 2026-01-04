@@ -1,5 +1,6 @@
 package com.ltb.sae501.ui.screens
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,8 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import android.util.Log
 import com.ltb.sae501.data.models.RecognitionResult
 import com.ltb.sae501.data.models.RecognizedEmotion
 import com.ltb.sae501.network.RemoteDataSource
@@ -35,6 +36,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.io.File
+
+private const val TAG = "HistoryScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,47 +46,68 @@ fun HistoryScreen(
     repository: com.ltb.sae501.data.RecognitionRepository,
     dataSource: RemoteDataSource
 ) {
+    Log.d(TAG, "=== HistoryScreen composition ===")
+
     val history by repository.getHistory().collectAsState(initial = emptyList())
     val unsyncedCount by repository.getUnsyncedCount().collectAsState(initial = 0)
     val isLoggedIn = com.ltb.sae501.auth.TokenManager.isLoggedIn()
-    
+
+    LaunchedEffect(history) {
+        Log.d(TAG, "Histoire mise à jour: ${history.size} éléments")
+        history.forEachIndexed { index, item ->
+            Log.d(TAG, "  [$index] ID: ${item.id}")
+            Log.d(TAG, "       Chemin: ${item.imageLocalPath}")
+            Log.d(TAG, "       Date: ${Date(item.detectedAt)}")
+            Log.d(TAG, "       Émotions: ${item.recognizedEmotions.size}")
+
+            // Vérifier si le fichier existe
+            if (item.imageLocalPath != null) {
+                val file = File(item.imageLocalPath!!)
+                Log.d(TAG, "       Fichier existe: ${file.exists()}, Taille: ${file.length()} octets")
+            }
+        }
+    }
+
     var categories by remember { mutableStateOf<List<com.ltb.sae501.data.models.EmotionCategory>>(emptyList()) }
     var isSyncing by remember { mutableStateOf(false) }
     var syncMessage by remember { mutableStateOf<String?>(null) }
-    
+
     LaunchedEffect(Unit) {
+        Log.d(TAG, "Chargement des catégories...")
         dataSource.getCategories().collect { cats ->
             categories = cats
+            Log.d(TAG, "Catégories chargées: ${cats.size}")
         }
     }
-    
+
     val coroutineScope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf<RecognitionResult?>(null) }
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     LaunchedEffect(syncMessage) {
         syncMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             syncMessage = null
         }
     }
-    
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
+                title = {
                     Text(
                         "Historique des reconnaissances",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
-                    ) 
+                    )
                 },
                 actions = {
                     if (isLoggedIn && unsyncedCount > 0) {
                         IconButton(
                             onClick = {
                                 coroutineScope.launch {
+                                    Log.d(TAG, "Début synchronisation...")
                                     isSyncing = true
                                     syncMessage = null
                                     val syncedCount = repository.syncAllPending()
@@ -92,6 +117,7 @@ fun HistoryScreen(
                                     } else {
                                         "Échec de la synchronisation"
                                     }
+                                    Log.d(TAG, "Synchronisation terminée: $syncedCount")
                                 }
                             },
                             enabled = !isSyncing
@@ -131,12 +157,14 @@ fun HistoryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         if (history.isEmpty()) {
+            Log.d(TAG, "Liste vide - affichage EmptyState")
             EmptyHistoryState(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             )
         } else {
+            Log.d(TAG, "Affichage de ${history.size} éléments")
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -153,13 +181,16 @@ fun HistoryScreen(
                         ModernHistoryCard(
                             result = result,
                             categories = categories,
-                            onDelete = { showDeleteDialog = result }
+                            onDelete = {
+                                Log.d(TAG, "Demande suppression: ${result.id}")
+                                showDeleteDialog = result
+                            }
                         )
                     }
                 }
             }
         }
-        
+
         if (showDeleteDialog != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = null },
@@ -170,7 +201,9 @@ fun HistoryScreen(
                         onClick = {
                             coroutineScope.launch {
                                 showDeleteDialog?.let { item ->
+                                    Log.d(TAG, "Suppression de ${item.id}")
                                     repository.deleteRecognition(item.id, item.imageLocalPath)
+                                    Log.d(TAG, "Suppression effectuée")
                                 }
                                 showDeleteDialog = null
                             }
@@ -250,10 +283,10 @@ fun ModernHistoryCard(
                         )
                     )
             )
-            
+
             Column(modifier = Modifier.padding(20.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Top,
@@ -264,12 +297,34 @@ fun ModernHistoryCard(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        AsyncImage(
-                            model = result.imageLocalPath,
-                            contentDescription = "Image reconnue",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        if (result.imageLocalPath != null) {
+                            val file = File(result.imageLocalPath!!)
+                            Log.d(TAG, "Chargement image: ${result.imageLocalPath}")
+                            Log.d(TAG, "  Existe: ${file.exists()}, Taille: ${file.length()}")
+
+                            AsyncImage(
+                                model = file,
+                                contentDescription = "Image reconnue",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                onError = {
+                                    Log.e(TAG, "Erreur chargement image: ${it.result.throwable.message}")
+                                },
+                                onSuccess = {
+                                    Log.d(TAG, "Image chargée avec succès")
+                                }
+                            )
+                        } else {
+                            Log.w(TAG, "Pas de chemin d'image pour ${result.id}")
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Gray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("❓", fontSize = 32.dp.value.sp)
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -281,7 +336,7 @@ fun ModernHistoryCard(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
@@ -291,7 +346,7 @@ fun ModernHistoryCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    
+
                     IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -300,9 +355,9 @@ fun ModernHistoryCard(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     result.recognizedEmotions.take(3).forEachIndexed { index, emotion ->
                         EmotionProgressBar(
@@ -332,9 +387,9 @@ fun EmotionProgressBar(
     categories: List<com.ltb.sae501.data.models.EmotionCategory>,
     rank: Int
 ) {
-    val emotionName = categories.find { it.id == emotion.emotionId }?.name 
+    val emotionName = categories.find { it.id == emotion.emotionId }?.name
         ?: emotion.emotionId
-    
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -366,7 +421,7 @@ fun EmotionProgressBar(
                         )
                     }
                 }
-                
+
                 Text(
                     text = emotionName,
                     style = MaterialTheme.typography.bodyMedium,
@@ -374,7 +429,7 @@ fun EmotionProgressBar(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             Text(
                 text = "${(emotion.confidence * 100).toInt()}%",
                 style = MaterialTheme.typography.bodyMedium,
@@ -386,9 +441,9 @@ fun EmotionProgressBar(
                 }
             )
         }
-        
+
         Spacer(modifier = Modifier.height(6.dp))
-        
+
         LinearProgressIndicator(
             progress = emotion.confidence,
             modifier = Modifier
@@ -405,18 +460,16 @@ fun EmotionProgressBar(
     }
 }
 
-/**
- * Formate un timestamp en temps relatif (ex: "Il y a 2h", "Aujourd'hui", etc.)
- */
+
 fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
-    
+
     val seconds = TimeUnit.MILLISECONDS.toSeconds(diff)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val days = TimeUnit.MILLISECONDS.toDays(diff)
-    
+
     return when {
         seconds < 60 -> "À l'instant"
         minutes < 60 -> "Il y a ${minutes}min"
