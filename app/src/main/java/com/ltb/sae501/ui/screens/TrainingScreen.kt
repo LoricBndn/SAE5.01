@@ -22,6 +22,7 @@ import com.ltb.sae501.ml.ModelMetadata
 import com.ltb.sae501.ml.ModelMetadataManager
 import com.ltb.sae501.network.RemoteDataSource
 import com.ltb.sae501.network.dto.TrainingStatusResponse
+import com.ltb.sae501.ui.theme.AccentPink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -62,33 +63,34 @@ fun TrainingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Entraînement du Modèle") },
+                title = { Text("Entraînement du Modèle", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1E1E1E),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = Color(0xFF1E1E1E)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -98,7 +100,7 @@ fun TrainingScreen(
                             text = "Statut du Modèle",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         if (modelMetadata != null) {
@@ -119,12 +121,12 @@ fun TrainingScreen(
                                     )
                                     Text(
                                         "Précision : ${(modelMetadata!!.accuracy * 100).toInt()}%",
-                                        color = Color(0xFFB0B0B0),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 14.sp
                                     )
                                     Text(
                                         "${modelMetadata!!.trainingImageCount} images d'entraînement",
-                                        color = Color(0xFFB0B0B0),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 14.sp
                                     )
                                 }
@@ -153,8 +155,8 @@ fun TrainingScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -164,19 +166,19 @@ fun TrainingScreen(
                             text = "Exigences d'Entraînement",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Text(
                             text = "Minimum $minImagesPerCategory images par catégorie",
-                            color = Color(0xFFB0B0B0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp
                         )
 
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.align(Alignment.CenterHorizontally),
-                                color = Color(0xFFF18E06)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -238,10 +240,10 @@ fun TrainingScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF18E06),
-                        disabledContainerColor = Color(0xFF444444)
+                        containerColor = AccentPink,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         text = if (isTraining) "Entraînement en cours..."
@@ -255,7 +257,7 @@ fun TrainingScreen(
                 if (!canTrain && !isLoading) {
                     Text(
                         text = "Ajoutez au moins $minImagesPerCategory images par catégorie pour commencer",
-                        color = Color(0xFFF18E06),
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -298,9 +300,9 @@ fun CategoryProgressCard(category: EmotionCategory, minImages: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A2A)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
@@ -328,13 +330,13 @@ fun CategoryProgressCard(category: EmotionCategory, minImages: Int) {
                 Column {
                     Text(
                         text = category.name,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp
                     )
                     Text(
                         text = "${category.imageCount} / $minImages images",
-                        color = if (isSufficient) Color(0xFF4CAF50) else Color(0xFFF18E06),
+                        color = if (isSufficient) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp
                     )
                 }
@@ -349,12 +351,12 @@ fun CategoryProgressCard(category: EmotionCategory, minImages: Int) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
-                    color = if (isSufficient) Color(0xFF4CAF50) else Color(0xFFF18E06),
-                    trackColor = Color(0xFF444444)
+                    color = if (isSufficient) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    color = Color(0xFFB0B0B0),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -384,7 +386,7 @@ fun TrainingProgressDialog(status: TrainingStatusResponse, onDismiss: () -> Unit
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFFF18E06)
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Text("Epoch ${status.currentEpoch} / ${status.totalEpochs}")
