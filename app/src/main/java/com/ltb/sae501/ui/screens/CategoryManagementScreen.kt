@@ -292,21 +292,40 @@ fun CategoryManagementScreen(
                 isUploading = false
                 uploadError = null
             },
-            onImageSelected = { uri ->
+            onImageSelected = { uris ->
                 coroutineScope.launch {
                     isUploading = true
                     uploadError = null
-                    val success = dataSource.uploadTrainingImage(
-                        categoryId = selectedCategory!!.id,
-                        imageUri = uri
-                    )
+                    
+                    // Upload chaque image de manière séquentielle
+                    var successCount = 0
+                    var failCount = 0
+                    
+                    for ((index, uri) in uris.withIndex()) {
+                        val success = dataSource.uploadTrainingImage(
+                            categoryId = selectedCategory!!.id,
+                            imageUri = uri
+                        )
+                        if (success) {
+                            successCount++
+                        } else {
+                            failCount++
+                        }
+                    }
+                    
                     isUploading = false
-                    if (success) {
+                    
+                    if (failCount == 0) {
+                        // Toutes les images ont été uploadées avec succès
                         showAddImageDialog = false
-                        // Recharger les catégories après l'ajout
                         retryTrigger++
+                    } else if (successCount > 0) {
+                        // Certaines images ont réussi, d'autres non
+                        uploadError = "$successCount image(s) uploadée(s), $failCount échec(s). Vérifiez votre connexion."
+                        retryTrigger++ // Rafraîchir pour montrer les images uploadées
                     } else {
-                        uploadError = "Échec de l'upload. Vérifiez votre connexion internet."
+                        // Toutes les images ont échoué
+                        uploadError = "Échec de l'upload de toutes les images. Vérifiez votre connexion internet."
                     }
                 }
             }
@@ -485,13 +504,13 @@ fun AddImageDialog(
     isUploading: Boolean,
     uploadError: String?,
     onDismiss: () -> Unit,
-    onImageSelected: (Uri) -> Unit
+    onImageSelected: (List<Uri>) -> Unit
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            onImageSelected(uri)
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            onImageSelected(uris)
         }
     }
 
@@ -509,12 +528,12 @@ fun AddImageDialog(
         text = {
             Column {
                 Text(
-                    "Ajoutez une image d'entraînement pour l'émotion ${category.name}.",
+                    "Ajoutez une ou plusieurs images d'entraînement pour l'émotion ${category.name}.",
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Cette image sera utilisée pour améliorer la reconnaissance de cette émotion.",
+                    text = "Ces images seront utilisées pour améliorer la reconnaissance de cette émotion.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -553,7 +572,7 @@ fun AddImageDialog(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Choisir une image", color = Color.White)
+                Text("Choisir des images", color = Color.White)
             }
         },
         dismissButton = {
