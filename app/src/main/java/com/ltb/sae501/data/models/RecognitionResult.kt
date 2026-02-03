@@ -5,6 +5,7 @@ data class RecognitionResult @JvmOverloads constructor(
     var userId: String? = null,
     var imageData: ByteArray? = null,
     var imageLocalPath: String? = null,
+    var imageUrl: String? = null,
     var detectedAt: Long = System.currentTimeMillis(),
     var recognizedEmotions: List<RecognizedEmotion> = emptyList()
 ) {
@@ -19,6 +20,7 @@ data class RecognitionResult @JvmOverloads constructor(
             if (!imageData.contentEquals(other.imageData)) return false
         } else if (other.imageData != null) return false
         if (imageLocalPath != other.imageLocalPath) return false
+        if (imageUrl != other.imageUrl) return false
         if (detectedAt != other.detectedAt) return false
         if (recognizedEmotions != other.recognizedEmotions) return false
         return true
@@ -29,6 +31,7 @@ data class RecognitionResult @JvmOverloads constructor(
         result = 31 * result + (userId?.hashCode() ?: 0)
         result = 31 * result + (imageData?.contentHashCode() ?: 0)
         result = 31 * result + (imageLocalPath?.hashCode() ?: 0)
+        result = 31 * result + (imageUrl?.hashCode() ?: 0)
         result = 31 * result + detectedAt.hashCode()
         result = 31 * result + recognizedEmotions.hashCode()
         return result

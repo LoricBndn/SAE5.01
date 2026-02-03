@@ -29,7 +29,8 @@ class SecurityConfig(
                 auth
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/files/training/**").permitAll()
-                    .requestMatchers("/api/files/recognition/**").authenticated()
+                    .requestMatchers("/api/files/recognition/**").permitAll()
+                    .requestMatchers("/api/recognitions/feed").permitAll()
                     .requestMatchers("/api/categories/initialize").permitAll()
                     .requestMatchers("/api/categories", "/api/categories/*").permitAll()
                     .requestMatchers("/api/categories/*/training-images").authenticated()

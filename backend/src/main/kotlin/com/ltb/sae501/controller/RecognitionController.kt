@@ -1,5 +1,6 @@
 package com.ltb.sae501.controller
 
+import com.ltb.sae501.dto.FeedItemResponse
 import com.ltb.sae501.dto.RecognitionRequest
 import com.ltb.sae501.dto.RecognitionResponse
 import com.ltb.sae501.dto.RecognizedEmotionDto
@@ -24,18 +25,21 @@ class RecognitionController(
     fun saveRecognition(
         @RequestParam("image") imageFile: MultipartFile,
         @RequestParam("emotions") emotionsJson: String,
+        @RequestParam("isPublic", required = false, defaultValue = "false") isPublic: Boolean,
+        @RequestParam("displayName", required = false) displayName: String?,
         authentication: Authentication
     ): ResponseEntity<RecognitionResponse> {
         try {
             val userId = authentication.principal as String
             logger.info("[SYNC] Receiving recognition from user: $userId")
             logger.info("[SYNC] Image size: ${imageFile.size} bytes, Emotions JSON: $emotionsJson")
-            
+            logger.info("[SYNC] isPublic: $isPublic, displayName: $displayName")
+
             val emotions = parseEmotionsJson(emotionsJson)
             logger.info("[SYNC] Parsed ${emotions.size} emotions: $emotions")
 
             val imageData = imageFile.bytes
-            val recognition = recognitionService.saveRecognition(imageData, emotions, userId)
+            val recognition = recognitionService.saveRecognition(imageData, emotions, userId, isPublic, displayName)
             logger.info("[SYNC] Successfully saved recognition with ID: ${recognition.id}")
 
             val emotionDtos = recognition.recognizedEmotions.map {
@@ -61,6 +65,33 @@ class RecognitionController(
             logger.error("[SYNC ERROR] Failed to save recognition", e)
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
+    }
+
+    @GetMapping("/feed")
+    fun getFeed(authentication: Authentication?): ResponseEntity<List<FeedItemResponse>> {
+        val currentUserId = authentication?.principal as? String
+        val publicRecognitions = recognitionService.getPublicRecognitions()
+
+        val responses = publicRecognitions.map { recognition ->
+            FeedItemResponse(
+                id = recognition.id,
+                detectedAt = recognition.detectedAt,
+                imageUrl = "/api/files/recognition/${recognition.id}",
+                recognizedEmotions = recognition.recognizedEmotions.map {
+                    RecognizedEmotionDto(
+                        id = it.id,
+                        recognitionId = recognition.id,
+                        emotionId = it.emotionCategory?.id ?: "",
+                        confidence = it.confidence,
+                        detectedAt = it.detectedAt
+                    )
+                },
+                displayName = recognition.displayName,
+                isOwnPost = currentUserId != null && recognition.user?.id == currentUserId
+            )
+        }
+
+        return ResponseEntity.ok(responses)
     }
 
     @GetMapping

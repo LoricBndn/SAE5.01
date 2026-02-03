@@ -20,7 +20,9 @@ class RecognitionService(
     fun saveRecognition(
         imageData: ByteArray,
         emotions: List<Pair<String, Float>>,
-        userId: String
+        userId: String,
+        isPublic: Boolean = false,
+        displayName: String? = null
     ): RecognitionResult {
         val user = userRepository.findById(userId).orElse(null)
             ?: throw IllegalArgumentException("User not found: $userId")
@@ -29,7 +31,9 @@ class RecognitionService(
             id = UUID.randomUUID().toString(),
             detectedAt = System.currentTimeMillis(),
             imageData = imageData,
-            user = user
+            user = user,
+            isPublic = isPublic,
+            displayName = displayName
         )
 
         val savedRecognition = recognitionResultRepository.save(recognition)
@@ -71,5 +75,9 @@ class RecognitionService(
         } else {
             false
         }
+    }
+
+    fun getPublicRecognitions(): List<RecognitionResult> {
+        return recognitionResultRepository.findByIsPublicTrueOrderByDetectedAtDesc()
     }
 }

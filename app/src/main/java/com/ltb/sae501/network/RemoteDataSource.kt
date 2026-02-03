@@ -2,12 +2,13 @@ package com.ltb.sae501.network
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.ltb.sae501.auth.TokenManager
 import com.ltb.sae501.data.models.EmotionCategory
 import com.ltb.sae501.data.models.RecognitionResult
 import com.ltb.sae501.data.models.RecognizedEmotion
 import com.ltb.sae501.network.dto.AuthRequest
-import com.ltb.sae501.network.dto.RecognizedEmotionDto
+import com.ltb.sae501.network.dto.FeedItemResponse
 import com.ltb.sae501.network.dto.RegisterRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -16,10 +17,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+
+private const val TAG = "RemoteDS"
 
 class RemoteDataSource(private val context: Context) {
     private val apiService = RetrofitClient.apiService
@@ -41,7 +43,6 @@ class RemoteDataSource(private val context: Context) {
             val errorBody = response.errorBody()?.string()
             Result.failure(Exception(errorBody ?: "Échec de l'inscription"))
         } catch (e: Exception) {
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -63,7 +64,6 @@ class RemoteDataSource(private val context: Context) {
             val errorBody = response.errorBody()?.string()
             Result.failure(Exception(errorBody ?: "Identifiants invalides"))
         } catch (e: Exception) {
-            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -74,26 +74,36 @@ class RemoteDataSource(private val context: Context) {
 
     suspend fun saveRecognition(
         imageData: ByteArray,
-        recognizedEmotions: List<RecognizedEmotion>
+        recognizedEmotions: List<RecognizedEmotion>,
+        isPublic: Boolean = false,
+        displayName: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
-        try {            
+        try {
             val requestFile = imageData.toRequestBody("image/jpeg".toMediaTypeOrNull())
             val imagePart = MultipartBody.Part.createFormData("image", "recognition.jpg", requestFile)
 
             val emotionsJson = buildEmotionsJson(recognizedEmotions)
             val emotionsBody = emotionsJson.toRequestBody("text/plain".toMediaTypeOrNull())
+            val isPublicBody = isPublic.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            val displayNameBody = displayName?.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            val response = apiService.saveRecognition(imagePart, emotionsBody)
-
-            if (response.isSuccessful) {
-                true
-            } else {
-                val errorBody = response.errorBody()?.string()
-                false
-            }
+            val response = apiService.saveRecognition(imagePart, emotionsBody, isPublicBody, displayNameBody)
+            response.isSuccessful
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "save reco failed", e)
             false
+        }
+    }
+
+    fun getFeed(): Flow<List<FeedItemResponse>> = flow {
+        while (true) {
+            try {
+                val response = apiService.getFeed()
+                if (response.isSuccessful) {
+                    emit(response.body() ?: emptyList())
+                }
+            } catch (e: Exception) { }
+            delay(5000)
         }
     }
 
@@ -108,6 +118,7 @@ class RemoteDataSource(private val context: Context) {
                             userId = dto.userId,
                             imageData = null,
                             imageLocalPath = null,
+                            imageUrl = buildImageUrl("/api/files/recognition/${dto.id}"),
                             detectedAt = dto.detectedAt,
                             recognizedEmotions = dto.recognizedEmotions.map { emotionDto ->
                                 RecognizedEmotion(
@@ -120,26 +131,22 @@ class RemoteDataSource(private val context: Context) {
                             }
                         )
                     } ?: emptyList()
-
                     emit(recognitions)
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
+            } catch (e: Exception) { }
             delay(3000)
         }
     }
 
     fun getCategories(): Flow<List<EmotionCategory>> = flow {
-        var consecutiveFailures = 0
+        var failures = 0
         val maxFailures = 3
 
         while (true) {
             try {
                 val response = apiService.getAllCategories()
                 if (response.isSuccessful) {
-                    consecutiveFailures = 0
+                    failures = 0
                     val categories = response.body()?.map { dto ->
                         EmotionCategory(
                             id = dto.id,
@@ -154,24 +161,21 @@ class RemoteDataSource(private val context: Context) {
                             trainingImages = dto.trainingImages
                         )
                     } ?: emptyList()
-
                     emit(categories.sortedBy { it.name })
                 } else {
-                    consecutiveFailures++
-                    if (consecutiveFailures >= maxFailures) {
+                    failures++
+                    if (failures >= maxFailures) {
                         emit(emptyList())
                         break
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                consecutiveFailures++
-                if (consecutiveFailures >= maxFailures) {
+                failures++
+                if (failures >= maxFailures) {
                     emit(emptyList())
                     break
                 }
             }
-
             delay(5000)
         }
     }
@@ -183,25 +187,19 @@ class RemoteDataSource(private val context: Context) {
             val imagePart = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
 
             val response = apiService.uploadTrainingImage(categoryId, imagePart)
-
             imageFile.delete()
-
             response.isSuccessful
         } catch (e: Exception) {
-            e.printStackTrace()
             false
         }
     }
 
     suspend fun deleteTrainingImage(categoryId: String, imageUrl: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val imageId = extractImageIdFromUrl(imageUrl)
-            if (imageId == null) return@withContext false
-
+            val imageId = extractImageIdFromUrl(imageUrl) ?: return@withContext false
             val response = apiService.deleteTrainingImage(categoryId, imageId)
             response.isSuccessful
         } catch (e: Exception) {
-            e.printStackTrace()
             false
         }
     }
@@ -211,7 +209,6 @@ class RemoteDataSource(private val context: Context) {
             val response = apiService.initializeCategories()
             response.isSuccessful
         } catch (e: Exception) {
-            e.printStackTrace()
             false
         }
     }
@@ -235,13 +232,10 @@ class RemoteDataSource(private val context: Context) {
     }
 
     private fun buildImageUrl(relativeUrl: String): String {
-        if (relativeUrl.startsWith("http")) {
-            return relativeUrl
-        }
+        if (relativeUrl.startsWith("http")) return relativeUrl
         val baseUrl = com.ltb.sae501.BuildConfig.API_BASE_URL
             .removeSuffix("/api/")
             .removeSuffix("/")
-
         return "$baseUrl$relativeUrl"
     }
 
@@ -252,13 +246,8 @@ class RemoteDataSource(private val context: Context) {
     suspend fun startTraining(): Map<String, String>? = withContext(Dispatchers.IO) {
         try {
             val response = apiService.startTraining()
-            if (response.isSuccessful) {
-                response.body()
-            } else {
-                null
-            }
+            if (response.isSuccessful) response.body() else null
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
@@ -266,13 +255,8 @@ class RemoteDataSource(private val context: Context) {
     suspend fun getTrainingStatus(): com.ltb.sae501.network.dto.TrainingStatusResponse? = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getTrainingStatus()
-            if (response.isSuccessful) {
-                response.body()
-            } else {
-                null
-            }
+            if (response.isSuccessful) response.body() else null
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
@@ -280,13 +264,8 @@ class RemoteDataSource(private val context: Context) {
     suspend fun downloadCustomModel(): ByteArray? = withContext(Dispatchers.IO) {
         try {
             val response = apiService.downloadCustomModel()
-            if (response.isSuccessful) {
-                response.body()?.bytes()
-            } else {
-                null
-            }
+            if (response.isSuccessful) response.body()?.bytes() else null
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
@@ -294,13 +273,8 @@ class RemoteDataSource(private val context: Context) {
     suspend fun downloadAllTrainingImages(): com.ltb.sae501.network.dto.TrainingImagesResponse? = withContext(Dispatchers.IO) {
         try {
             val response = apiService.downloadAllTrainingImages()
-            if (response.isSuccessful) {
-                response.body()
-            } else {
-                null
-            }
+            if (response.isSuccessful) response.body() else null
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }

@@ -1,6 +1,7 @@
 package com.ltb.sae501.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.History
@@ -22,6 +23,7 @@ fun BottomNavBar(
     val items = listOf(
         NavItem("home", Icons.Default.Home, "Accueil"),
         NavItem("camera", Icons.Outlined.PhotoCamera, "Caméra"),
+        NavItem("feed", Icons.AutoMirrored.Outlined.List, "Fil"),
         NavItem("history", Icons.Outlined.History, "Historique"),
         NavItem("profile", Icons.Outlined.AccountCircle, "Profil")
     )

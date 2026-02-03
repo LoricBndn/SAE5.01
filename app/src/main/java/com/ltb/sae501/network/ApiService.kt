@@ -3,6 +3,7 @@ package com.ltb.sae501.network
 import com.ltb.sae501.network.dto.AuthRequest
 import com.ltb.sae501.network.dto.AuthResponse
 import com.ltb.sae501.network.dto.CategoryResponse
+import com.ltb.sae501.network.dto.FeedItemResponse
 import com.ltb.sae501.network.dto.RecognitionResponse
 import com.ltb.sae501.network.dto.RegisterRequest
 import com.ltb.sae501.network.dto.TrainingImagesResponse
@@ -26,8 +27,13 @@ interface ApiService {
     @POST("recognitions")
     suspend fun saveRecognition(
         @Part image: MultipartBody.Part,
-        @Part("emotions") emotions: RequestBody
+        @Part("emotions") emotions: RequestBody,
+        @Part("isPublic") isPublic: RequestBody?,
+        @Part("displayName") displayName: RequestBody?
     ): Response<RecognitionResponse>
+
+    @GET("recognitions/feed")
+    suspend fun getFeed(): Response<List<FeedItemResponse>>
 
     @GET("recognitions")
     suspend fun getAllRecognitions(): Response<List<RecognitionResponse>>

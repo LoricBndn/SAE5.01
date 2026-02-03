@@ -96,10 +96,14 @@ class MainActivity : ComponentActivity() {
                                 dataSource = dataSource,
                                 repository = repository,
                                 isFrontCamera = isFrontCamera,
+                                isLoggedIn = isAuthenticated,
                                 onCameraFlipped = { newValue ->
                                     isFrontCamera = newValue
                                     CameraPreferences.setFrontCamera(newValue)
                                 }
+                            )
+                            Screen.Feed.route -> FeedScreen(
+                                dataSource = dataSource
                             )
                             Screen.History.route -> HistoryScreen(
                                 repository = repository,

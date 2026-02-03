@@ -12,6 +12,7 @@ fun CameraScreen(
     dataSource: RemoteDataSource,
     repository: com.ltb.sae501.data.RecognitionRepository,
     isFrontCamera: Boolean,
+    isLoggedIn: Boolean,
     onCameraFlipped: (Boolean) -> Unit
 ) {
     EcranCamera(
@@ -20,6 +21,7 @@ fun CameraScreen(
         dataSource = dataSource,
         repository = repository,
         isFrontCamera = isFrontCamera,
+        isLoggedIn = isLoggedIn,
         onCameraFlipped = onCameraFlipped
     )
 }
