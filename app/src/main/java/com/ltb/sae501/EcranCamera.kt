@@ -412,7 +412,7 @@ fun EcranCamera(
                         repository.saveRecognition(
                             imageUri = analyzedImageUri!!,
                             emotions = emotionsToSave,
-                            autoSaveEnabled = true
+                            autoSaveEnabled = autoSaveEnabled
                         )
                     }
 
