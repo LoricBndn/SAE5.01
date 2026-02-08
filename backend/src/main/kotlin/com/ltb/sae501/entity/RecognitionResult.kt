@@ -21,12 +21,6 @@ data class RecognitionResult(
     @Column(nullable = false)
     var detectedAt: Long = System.currentTimeMillis(),
 
-    @Column(nullable = false)
-    var isPublic: Boolean = false,
-
-    @Column(length = 50)
-    var displayName: String? = null,
-
     @OneToMany(mappedBy = "recognitionResult", cascade = [CascadeType.ALL], orphanRemoval = true)
     var recognizedEmotions: MutableList<RecognizedEmotion> = mutableListOf()
 ) {

@@ -12,6 +12,4 @@ interface RecognitionResultRepository : JpaRepository<RecognitionResult, String>
 
     @Query("SELECT r FROM RecognitionResult r WHERE r.user.id = :userId ORDER BY r.detectedAt DESC")
     fun findByUserIdOrderByDetectedAtDesc(@Param("userId") userId: String): List<RecognitionResult>
-
-    fun findByIsPublicTrueOrderByDetectedAtDesc(): List<RecognitionResult>
 }

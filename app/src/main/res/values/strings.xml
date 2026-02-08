@@ -1,9 +1,3 @@
 <resources>
-    <string name="app_name">MoodScan</string>
-    <!-- Feed Game Mode -->
-    <string name="feed_mode_normal">Normal</string>
-    <string name="feed_mode_guess">Deviner</string>
-    <string name="guess_prompt">Quelle émotion voyez-vous ?</string>
-    <string name="guess_correct">Correct !</string>
-    <string name="guess_incorrect">C\'était %1$s</string>
+    <string name="app_name">SAE5.01</string>
 </resources>

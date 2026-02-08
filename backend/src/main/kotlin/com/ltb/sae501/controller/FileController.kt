@@ -24,16 +24,6 @@ class FileController(
         val recognition = recognitionService.getRecognitionById(recognitionId)
             ?: return ResponseEntity.notFound().build()
 
-        // Allow access if the recognition is public
-        if (recognition.isPublic) {
-            val headers = HttpHeaders()
-            headers.contentType = MediaType.IMAGE_JPEG
-            return ResponseEntity.ok()
-                .headers(headers)
-                .body(recognition.imageData)
-        }
-
-        // For private recognitions, require authentication and ownership
         if (authentication != null) {
             val userId = authentication.principal as String
             if (recognition.user?.id != userId) {

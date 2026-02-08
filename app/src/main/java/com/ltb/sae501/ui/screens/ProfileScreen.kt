@@ -105,17 +105,13 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ProfileHeader(username = username, isLoggedIn = isLoggedIn)
-
-            // Afficher les stats locales uniquement en mode hors ligne ou s'il y a des données à sync
-            if (!isLoggedIn || unsyncedCount > 0) {
-                StatisticsCard(
-                    total = totalCount,
-                    synced = syncedCount,
-                    unsynced = unsyncedCount,
-                    isOffline = !isLoggedIn
-                )
-            }
-
+            
+            StatisticsCard(
+                total = totalCount,
+                synced = syncedCount,
+                unsynced = unsyncedCount
+            )
+            
             if (isLoggedIn && unsyncedCount > 0) {
                 SyncCard(
                     unsyncedCount = unsyncedCount,
@@ -232,7 +228,7 @@ fun ProfileHeader(username: String, isLoggedIn: Boolean) {
 }
 
 @Composable
-fun StatisticsCard(total: Int, synced: Int, unsynced: Int, isOffline: Boolean = false) {
+fun StatisticsCard(total: Int, synced: Int, unsynced: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -247,7 +243,7 @@ fun StatisticsCard(total: Int, synced: Int, unsynced: Int, isOffline: Boolean = 
                 .padding(20.dp)
         ) {
             Text(
-                text = if (isOffline) "Données locales" else "À synchroniser",
+                text = "Statistiques",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

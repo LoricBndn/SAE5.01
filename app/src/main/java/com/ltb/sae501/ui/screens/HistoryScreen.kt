@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Sync
@@ -45,18 +46,37 @@ fun HistoryScreen(
     repository: com.ltb.sae501.data.RecognitionRepository,
     dataSource: RemoteDataSource
 ) {
-    val history by repository.getHistory().collectAsState(initial = null)
+    Log.d(TAG, "=== HistoryScreen composition ===")
+
+    val history by repository.getHistory().collectAsState(initial = emptyList())
     val unsyncedCount by repository.getUnsyncedCount().collectAsState(initial = 0)
     val isLoggedIn = com.ltb.sae501.auth.TokenManager.isLoggedIn()
-    val isLoading = history == null
+
+    LaunchedEffect(history) {
+        Log.d(TAG, "Histoire mise à jour: ${history.size} éléments")
+        history.forEachIndexed { index, item ->
+            Log.d(TAG, "  [$index] ID: ${item.id}")
+            Log.d(TAG, "       Chemin: ${item.imageLocalPath}")
+            Log.d(TAG, "       Date: ${Date(item.detectedAt)}")
+            Log.d(TAG, "       Émotions: ${item.recognizedEmotions.size}")
+
+            // Vérifier si le fichier existe
+            if (item.imageLocalPath != null) {
+                val file = File(item.imageLocalPath!!)
+                Log.d(TAG, "       Fichier existe: ${file.exists()}, Taille: ${file.length()} octets")
+            }
+        }
+    }
 
     var categories by remember { mutableStateOf<List<com.ltb.sae501.data.models.EmotionCategory>>(emptyList()) }
     var isSyncing by remember { mutableStateOf(false) }
     var syncMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        Log.d(TAG, "Chargement des catégories...")
         dataSource.getCategories().collect { cats ->
             categories = cats
+            Log.d(TAG, "Catégories chargées: ${cats.size}")
         }
     }
 
@@ -87,6 +107,7 @@ fun HistoryScreen(
                         IconButton(
                             onClick = {
                                 coroutineScope.launch {
+                                    Log.d(TAG, "Début synchronisation...")
                                     isSyncing = true
                                     syncMessage = null
                                     val syncedCount = repository.syncAllPending()
@@ -96,25 +117,30 @@ fun HistoryScreen(
                                     } else {
                                         "Échec de la synchronisation"
                                     }
+                                    Log.d(TAG, "Synchronisation terminée: $syncedCount")
                                 }
                             },
                             enabled = !isSyncing
                         ) {
                             if (isSyncing) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
+                                    modifier = androidx.compose.ui.Modifier.size(24.dp),
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             } else {
-                                Box {
-                                    Icon(
-                                        imageVector = Icons.Default.Sync,
-                                        contentDescription = "Synchroniser",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    if (unsyncedCount > 0) {
-                                        Badge(modifier = Modifier.align(Alignment.TopEnd)) {
-                                            Text("$unsyncedCount")
+                                androidx.compose.material.icons.Icons.Default.Sync.let { icon ->
+                                    androidx.compose.foundation.layout.Box {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = "Synchroniser",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        if (unsyncedCount > 0) {
+                                            androidx.compose.material3.Badge(
+                                                modifier = androidx.compose.ui.Modifier.align(Alignment.TopEnd)
+                                            ) {
+                                                Text("$unsyncedCount")
+                                            }
                                         }
                                     }
                                 }
@@ -130,41 +156,36 @@ fun HistoryScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        when {
-            isLoading -> {
-                LoadingState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                )
-            }
-            history.isNullOrEmpty() -> {
-                EmptyHistoryState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                )
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(history!!) { result ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            ModernHistoryCard(
-                                result = result,
-                                categories = categories,
-                                onDelete = { showDeleteDialog = result }
-                            )
-                        }
+        if (history.isEmpty()) {
+            Log.d(TAG, "Liste vide - affichage EmptyState")
+            EmptyHistoryState(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            )
+        } else {
+            Log.d(TAG, "Affichage de ${history.size} éléments")
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(history) { result ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        ModernHistoryCard(
+                            result = result,
+                            categories = categories,
+                            onDelete = {
+                                Log.d(TAG, "Demande suppression: ${result.id}")
+                                showDeleteDialog = result
+                            }
+                        )
                     }
                 }
             }
@@ -180,7 +201,9 @@ fun HistoryScreen(
                         onClick = {
                             coroutineScope.launch {
                                 showDeleteDialog?.let { item ->
+                                    Log.d(TAG, "Suppression de ${item.id}")
                                     repository.deleteRecognition(item.id, item.imageLocalPath)
+                                    Log.d(TAG, "Suppression effectuée")
                                 }
                                 showDeleteDialog = null
                             }
@@ -199,19 +222,6 @@ fun HistoryScreen(
                 }
             )
         }
-    }
-}
-
-@Composable
-fun LoadingState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary
-        )
     }
 }
 
@@ -287,36 +297,32 @@ fun ModernHistoryCard(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        when {
-                            // img locale
-                            result.imageLocalPath != null -> {
-                                val file = File(result.imageLocalPath!!)
-                                AsyncImage(
-                                    model = file,
-                                    contentDescription = "Image reconnue",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            // img serveur
-                            result.imageUrl != null -> {
-                                AsyncImage(
-                                    model = result.imageUrl,
-                                    contentDescription = "Image reconnue",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            // pas d'img
-                            else -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Gray),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("?", fontSize = 32.sp)
+                        if (result.imageLocalPath != null) {
+                            val file = File(result.imageLocalPath!!)
+                            Log.d(TAG, "Chargement image: ${result.imageLocalPath}")
+                            Log.d(TAG, "  Existe: ${file.exists()}, Taille: ${file.length()}")
+
+                            AsyncImage(
+                                model = file,
+                                contentDescription = "Image reconnue",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                onError = {
+                                    Log.e(TAG, "Erreur chargement image: ${it.result.throwable.message}")
+                                },
+                                onSuccess = {
+                                    Log.d(TAG, "Image chargée avec succès")
                                 }
+                            )
+                        } else {
+                            Log.w(TAG, "Pas de chemin d'image pour ${result.id}")
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Gray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("❓", fontSize = 32.dp.value.sp)
                             }
                         }
                     }

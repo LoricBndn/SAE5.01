@@ -17,24 +17,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,7 +56,6 @@ fun EcranCamera(
     dataSource: RemoteDataSource,
     repository: com.ltb.sae501.data.RecognitionRepository,
     isFrontCamera: Boolean,
-    isLoggedIn: Boolean,
     onCameraFlipped: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -394,42 +383,37 @@ fun EcranCamera(
             emotions = analyzedEmotions,
             categories = categories,
             autoSaveEnabled = autoSaveEnabled,
-            isLoggedIn = isLoggedIn,
             onDismiss = {
                 showResultDialog = false
                 analyzedImageUri = null
                 analyzedEmotions = emptyList()
             },
-            onSave = { isPublic, showUsername ->
-                Log.d("EcranCamera", "=== onSave CALLED ===")
-                Log.d("EcranCamera", "isPublic=$isPublic, showUsername=$showUsername")
-                Log.d("EcranCamera", "analyzedEmotions count: ${analyzedEmotions.size}")
-                analyzedEmotions.forEach { (id, conf) -> Log.d("EcranCamera", "  - emotion: '$id', confidence: $conf") }
+            onSave = {
                 coroutineScope.launch {
-                    // Utiliser directement l'emotionId du modèle ML (correspond aux IDs en BDD)
-                    val emotionsToSave = analyzedEmotions.map { (emotionId, confidence) ->
-                        RecognizedEmotion(
-                            id = java.util.UUID.randomUUID().toString(),
-                            recognitionId = "",
-                            emotionId = emotionId,
-                            confidence = confidence,
-                            detectedAt = System.currentTimeMillis()
-                        )
+                    val emotionsToSave = analyzedEmotions.mapNotNull { (emotionId, confidence) ->
+                        val category = categories.find { cat ->
+                            cat.id.equals(emotionId, ignoreCase = true)
+                        }
+
+                        if (category != null) {
+                            RecognizedEmotion(
+                                id = java.util.UUID.randomUUID().toString(),
+                                recognitionId = "",
+                                emotionId = category.id,
+                                confidence = confidence,
+                                detectedAt = System.currentTimeMillis()
+                            )
+                        } else {
+                            null
+                        }
                     }
 
-                    Log.d("EcranCamera", "emotionsToSave: ${emotionsToSave.size}")
                     if (emotionsToSave.isNotEmpty()) {
-                        Log.d("EcranCamera", "Calling repository.saveRecognition...")
-                        val result = repository.saveRecognition(
+                        repository.saveRecognition(
                             imageUri = analyzedImageUri!!,
                             emotions = emotionsToSave,
-                            autoSaveEnabled = true,
-                            isPublic = isPublic,
-                            showUsername = showUsername
+                            autoSaveEnabled = true
                         )
-                        Log.d("EcranCamera", "saveRecognition result: $result")
-                    } else {
-                        Log.w("EcranCamera", "No emotions to save!")
                     }
 
                     showResultDialog = false
@@ -447,13 +431,9 @@ fun EmotionResultDialog(
     emotions: List<Pair<String, Float>>,
     categories: List<com.ltb.sae501.data.models.EmotionCategory>,
     autoSaveEnabled: Boolean,
-    isLoggedIn: Boolean,
     onDismiss: () -> Unit,
-    onSave: (isPublic: Boolean, showUsername: Boolean) -> Unit
+    onSave: () -> Unit
 ) {
-    var isPublic by remember { mutableStateOf(false) }
-    var showUsername by remember { mutableStateOf(true) }
-
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -542,7 +522,7 @@ fun EmotionResultDialog(
                     }
 
                     LinearProgressIndicator(
-                        progress = { confidence },
+                        progress = confidence,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -553,64 +533,6 @@ fun EmotionResultDialog(
                             else -> MaterialTheme.colorScheme.tertiary
                         }
                     )
-                }
-
-                // Options de partage (seulement si connecté)
-                if (isLoggedIn) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    Text(
-                        "Options de partage",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Partager dans le fil public",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Switch(
-                            checked = isPublic,
-                            onCheckedChange = { isPublic = it }
-                        )
-                    }
-
-                    if (isPublic) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Afficher mon pseudo",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Switch(
-                                checked = showUsername,
-                                onCheckedChange = { showUsername = it }
-                            )
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -631,7 +553,7 @@ fun EmotionResultDialog(
                     }
 
                     Button(
-                        onClick = { onSave(isPublic, showUsername) },
+                        onClick = onSave,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
